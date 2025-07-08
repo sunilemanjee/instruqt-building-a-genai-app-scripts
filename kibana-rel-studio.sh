@@ -121,17 +121,18 @@ setup_environment() {
     echo "Cloud Elasticsearch variables check completed"
 }
 
-# Function to kill any process running on port 8080
-kill_port_8080() {
-    echo "Checking for processes running on port 8080..."
+# Function to kill any process running on a specified port
+kill_port() {
+    local PORT=$1
+    echo "Checking for processes running on port $PORT..."
     
-    # Find processes using port 8080
-    PIDS=$(lsof -ti:8080 2>/dev/null)
+    # Find processes using the specified port
+    PIDS=$(lsof -ti:$PORT 2>/dev/null)
     
     if [ ! -z "$PIDS" ]; then
-        echo "Found processes running on port 8080: $PIDS"
+        echo "Found processes running on port $PORT: $PIDS"
         for PID in $PIDS; do
-            echo "Killing process $PID on port 8080..."
+            echo "Killing process $PID on port $PORT..."
             kill -9 $PID 2>/dev/null
             if [ $? -eq 0 ]; then
                 echo "Successfully killed process $PID"
@@ -142,15 +143,25 @@ kill_port_8080() {
         sleep 2
         
         # Verify port is free
-        NEW_PIDS=$(lsof -ti:8080 2>/dev/null)
+        NEW_PIDS=$(lsof -ti:$PORT 2>/dev/null)
         if [ -z "$NEW_PIDS" ]; then
-            echo "Port 8080 is now free"
+            echo "Port $PORT is now free"
         else
-            echo "Warning: Port 8080 still has processes running: $NEW_PIDS"
+            echo "Warning: Port $PORT still has processes running: $NEW_PIDS"
         fi
     else
-        echo "No processes found running on port 8080"
+        echo "No processes found running on port $PORT"
     fi
+}
+
+# Function to kill any process running on port 8080
+kill_port_8080() {
+    kill_port 8080
+}
+
+# Function to kill any process running on port 4096
+kill_port_4096() {
+    kill_port 4096
 }
 
 # Function to kill servers
@@ -160,6 +171,10 @@ kill_servers() {
     
     echo "Stopping Yarn dev server..."
     pkill -f "yarn run dev"
+    
+    echo "Killing processes on ports 8080 and 4096..."
+    kill_port_8080
+    kill_port_4096
     
     echo "Checking if processes are still running..."
     sleep 2
@@ -181,8 +196,9 @@ kill_servers() {
 
 # Function to start servers
 start_servers() {
-    # Kill any processes running on port 8080 first
+    # Kill any processes running on ports 8080 and 4096 first
     kill_port_8080
+    kill_port_4096
     
     # Setup environment and fetch API key
     setup_environment
@@ -243,6 +259,7 @@ restart_servers() {
     echo "Restarting servers..."
     kill_servers
     kill_port_8080
+    kill_port_4096
     sleep 3
     start_servers
 }
