@@ -174,29 +174,15 @@ if [ $? -eq 0 ]; then
         sed -i 's|export ES_URL="[^"]*"|export ES_URL="'"$ES_ENDPOINT"'"|' "$CONFIG_FILE"
         echo "ES_URL updated to $ES_ENDPOINT"
         
-        # Fetch API key from the endpoint
-        echo "Fetching API key from $PROXY_ES_KEY_BROKER..."
-        API_RESPONSE=$(curl -s $PROXY_ES_KEY_BROKER)
-        
-        if [ $? -eq 0 ] && [ ! -z "$API_RESPONSE" ]; then
-            # Extract API key using jq (if available) or grep/sed
-            if command -v jq &> /dev/null; then
-                API_KEY=$(echo "$API_RESPONSE" | jq -r '.["aws-us-east-1"].credentials.api_key')
-            else
-                # Fallback to grep/sed if jq is not available
-                API_KEY=$(echo "$API_RESPONSE" | grep -o '"api_key": "[^"]*"' | sed 's/"api_key": "\([^"]*\)"/\1/')
-            fi
-            
-            if [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
-                echo "API key retrieved successfully"
-                # Update the ES_API_KEY in config file
-                sed -i 's|export ES_API_KEY="[^"]*"|export ES_API_KEY="'"$API_KEY"'"|' "$CONFIG_FILE"
-                echo "ES_API_KEY updated in $CONFIG_FILE"
-            else
-                echo "Warning: Could not extract API key from response"
-            fi
+        # Use the API key that was already extracted in the retry loop above
+        if [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+            echo "Using API key retrieved from retry loop"
+            # Update the ES_API_KEY in config file
+            sed -i 's|export ES_API_KEY="[^"]*"|export ES_API_KEY="'"$API_KEY"'"|' "$CONFIG_FILE"
+            echo "ES_API_KEY updated in $CONFIG_FILE"
         else
-            echo "Warning: Failed to fetch API key from $PROXY_ES_KEY_BROKER"
+            echo "Error: No valid API key available for config file"
+            exit 1
         fi
         
         # Update Google Maps API key
@@ -304,29 +290,15 @@ if [ $? -eq 0 ]; then
         # Update setenv.sh with API key and endpoint
         echo "Updating setenv.sh with API configuration..."
         
-                 # Fetch API key from the endpoint (reuse from earlier)
-         echo "Fetching API key from $PROXY_ES_KEY_BROKER..."
-         API_RESPONSE=$(curl -s $PROXY_ES_KEY_BROKER)
-        
-        if [ $? -eq 0 ] && [ ! -z "$API_RESPONSE" ]; then
-            # Extract API key using jq (if available) or grep/sed
-            if command -v jq &> /dev/null; then
-                API_KEY=$(echo "$API_RESPONSE" | jq -r '.["aws-us-east-1"].credentials.api_key')
-            else
-                # Fallback to grep/sed if jq is not available
-                API_KEY=$(echo "$API_RESPONSE" | grep -o '"api_key": "[^"]*"' | sed 's/"api_key": "\([^"]*\)"/\1/')
-            fi
-            
-            if [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
-                echo "API key retrieved successfully"
-                # Update the ES_API_KEY in setenv.sh
-                sed -i 's|export ES_API_KEY="[^"]*"|export ES_API_KEY="'"$API_KEY"'"|' setenv.sh
-                echo "ES_API_KEY updated in setenv.sh"
-            else
-                echo "Warning: Could not extract API key from response"
-            fi
+        # Use the API key that was already extracted in the retry loop above
+        if [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+            echo "Using API key retrieved from retry loop"
+            # Update the ES_API_KEY in setenv.sh
+            sed -i 's|export ES_API_KEY="[^"]*"|export ES_API_KEY="'"$API_KEY"'"|' setenv.sh
+            echo "ES_API_KEY updated in setenv.sh"
         else
-            echo "Warning: Failed to fetch API key from $ES_ENDPOINT"
+            echo "Error: No valid API key available for setenv.sh"
+            exit 1
         fi
         
         # Update ELSER_INFERENCE_ID
