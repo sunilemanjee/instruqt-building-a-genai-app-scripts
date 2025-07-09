@@ -5,13 +5,56 @@
 # Function to setup environment and fetch API key
 setup_environment() {
     # Fetch project results and store in /tmp/project_results.json
-    echo "Fetching project results from http://es3-api-v1:8081..."
-    curl -s http://es3-api-v1:8081 > /tmp/project_results.json
+    echo "Fetching project results from $PROXY_ES_KEY_BROKER..."
 
-    if [ $? -eq 0 ]; then
-        echo "Project results saved to /tmp/project_results.json"
-    else
-        echo "Warning: Failed to fetch project results from http://es3-api-v1:8081"
+    MAX_RETRIES=10
+    RETRY_WAIT=30
+
+    for attempt in $(seq 1 $MAX_RETRIES); do
+        echo "Attempt $attempt of $MAX_RETRIES at $(date)"
+        
+        # Fetch the response
+        curl -s $PROXY_ES_KEY_BROKER > /tmp/project_results.json
+        
+        if [ $? -eq 0 ]; then
+            echo "Project results saved to /tmp/project_results.json"
+            
+            # Check if the response contains valid JSON and has the api_key
+            if command -v jq &> /dev/null; then
+                # Use jq to validate JSON and extract api_key
+                API_KEY=$(jq -r '.["aws-us-east-1"].credentials.api_key' /tmp/project_results.json 2>/dev/null)
+                
+                if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+                    echo "API key found successfully: ${API_KEY:0:10}..."
+                    break
+                else
+                    echo "API key not found or invalid in response on attempt $attempt"
+                    [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+                fi
+            else
+                # Fallback to grep/sed if jq is not available
+                API_KEY=$(grep -o '"api_key": "[^"]*"' /tmp/project_results.json | sed 's/"api_key": "\([^"]*\)"/\1/' 2>/dev/null)
+                
+                if [ ! -z "$API_KEY" ]; then
+                    echo "API key found successfully: ${API_KEY:0:10}..."
+                    break
+                else
+                    echo "API key not found in response on attempt $attempt"
+                    [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+                fi
+            fi
+        else
+            echo "Failed to fetch project results from $PROXY_ES_KEY_BROKER on attempt $attempt"
+            [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+        fi
+    done
+
+    # Check if we successfully got the API key after all attempts
+    if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
+        echo "Error: Failed to retrieve valid API key after $MAX_RETRIES attempts"
+        echo "Last response content:"
+        cat /tmp/project_results.json
+        exit 1
     fi
 
     # Change to the relevance-studio directory
@@ -28,36 +71,22 @@ setup_environment() {
         fi
     fi
 
-    # Fetch API key from the endpoint
-    echo "Fetching API key from http://es3-api-v1:8081..."
-    API_RESPONSE=$(curl -s http://es3-api-v1:8081)
-    
-    if [ $? -eq 0 ] && [ ! -z "$API_RESPONSE" ]; then
-        # Extract API key using jq (if available) or grep/sed
-        if command -v jq &> /dev/null; then
-            API_KEY=$(echo "$API_RESPONSE" | jq -r '.["aws-us-east-1"].credentials.api_key')
-        else
-            # Fallback to grep/sed if jq is not available
-            API_KEY=$(echo "$API_RESPONSE" | grep -o '"api_key": "[^"]*"' | sed 's/"api_key": "\([^"]*\)"/\1/')
-        fi
+    # Use the API key that was already extracted in the retry loop above
+    if [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+        echo "Using API key retrieved from retry loop"
         
-        if [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
-            echo "API key retrieved successfully"
-            
-            # Update .env file with the API key
-            if grep -q "ELASTICSEARCH_API_KEY" .env; then
-                # Update existing line
-                sed -i "s|ELASTICSEARCH_API_KEY=.*|ELASTICSEARCH_API_KEY=$API_KEY|" .env
-            else
-                # Add new line
-                echo "ELASTICSEARCH_API_KEY=$API_KEY" >> .env
-            fi
-            echo "ELASTICSEARCH_API_KEY updated in .env"
+        # Update .env file with the API key
+        if grep -q "ELASTICSEARCH_API_KEY" .env; then
+            # Update existing line
+            sed -i "s|ELASTICSEARCH_API_KEY=.*|ELASTICSEARCH_API_KEY=$API_KEY|" .env
         else
-            echo "Warning: Could not extract API key from response"
+            # Add new line
+            echo "ELASTICSEARCH_API_KEY=$API_KEY" >> .env
         fi
+        echo "ELASTICSEARCH_API_KEY updated in .env"
     else
-        echo "Warning: Failed to fetch API key from http://es3-api-v1:8081"
+        echo "Error: No valid API key available for .env configuration"
+        exit 1
     fi
 
     # Set ELASTICSEARCH_URL from ES_ENDPOINT environment variable

@@ -80,12 +80,55 @@ agent variable set LLM_CHAT_URL https://$LLM_URL/v1/chat/completions
 
 # Fetch project results and store in /tmp/project_results.json
 echo "Fetching project results from $PROXY_ES_KEY_BROKER..."
-curl -s $PROXY_ES_KEY_BROKER > /tmp/project_results.json
 
-if [ $? -eq 0 ]; then
-    echo "Project results saved to /tmp/project_results.json"
-else
-    echo "Warning: Failed to fetch project results from $PROXY_ES_KEY_BROKER"
+MAX_RETRIES=10
+RETRY_WAIT=30
+
+for attempt in $(seq 1 $MAX_RETRIES); do
+    echo "Attempt $attempt of $MAX_RETRIES at $(date)"
+    
+    # Fetch the response
+    curl -s $PROXY_ES_KEY_BROKER > /tmp/project_results.json
+    
+    if [ $? -eq 0 ]; then
+        echo "Project results saved to /tmp/project_results.json"
+        
+        # Check if the response contains valid JSON and has the api_key
+        if command -v jq &> /dev/null; then
+            # Use jq to validate JSON and extract api_key
+            API_KEY=$(jq -r '.["aws-us-east-1"].credentials.api_key' /tmp/project_results.json 2>/dev/null)
+            
+            if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+                echo "API key found successfully: ${API_KEY:0:10}..."
+                break
+            else
+                echo "API key not found or invalid in response on attempt $attempt"
+                [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+            fi
+        else
+            # Fallback to grep/sed if jq is not available
+            API_KEY=$(grep -o '"api_key": "[^"]*"' /tmp/project_results.json | sed 's/"api_key": "\([^"]*\)"/\1/' 2>/dev/null)
+            
+            if [ ! -z "$API_KEY" ]; then
+                echo "API key found successfully: ${API_KEY:0:10}..."
+                break
+            else
+                echo "API key not found in response on attempt $attempt"
+                [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+            fi
+        fi
+    else
+        echo "Failed to fetch project results from $PROXY_ES_KEY_BROKER on attempt $attempt"
+        [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+    fi
+done
+
+# Check if we successfully got the API key after all attempts
+if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
+    echo "Error: Failed to retrieve valid API key after $MAX_RETRIES attempts"
+    echo "Last response content:"
+    cat /tmp/project_results.json
+    exit 1
 fi
 
 echo "Cloning Elastic-Python-MCP-Server repository..."
