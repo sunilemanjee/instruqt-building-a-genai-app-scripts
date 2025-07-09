@@ -314,8 +314,10 @@ if [ $? -eq 0 ]; then
         
         # Update Azure OpenAI configuration
         echo "Updating Azure OpenAI configuration in setenv.sh..."
-        sed -i 's|export AZURE_OPENAI_ENDPOINT=.*|export AZURE_OPENAI_ENDPOINT="'"$LLM_URL"'"|' setenv.sh
-        echo "AZURE_OPENAI_ENDPOINT updated to $LLM_URL"
+        # Format LLM_URL with https:// prefix and trailing slash for Azure OpenAI endpoint
+        AZURE_OPENAI_ENDPOINT="https://$LLM_URL/"
+        sed -i 's|export AZURE_OPENAI_ENDPOINT=.*|export AZURE_OPENAI_ENDPOINT="'"$AZURE_OPENAI_ENDPOINT"'"|' setenv.sh
+        echo "AZURE_OPENAI_ENDPOINT updated to $AZURE_OPENAI_ENDPOINT"
         
         sed -i 's|export AZURE_OPENAI_API_KEY=.*|export AZURE_OPENAI_API_KEY="'"$OPENAI_API_KEY"'"|' setenv.sh
         echo "AZURE_OPENAI_API_KEY updated in setenv.sh"
