@@ -1,0 +1,154 @@
+#!/bin/bash
+
+# Fetch project results and store in /tmp/project_results.json
+echo "Fetching project results from $PROXY_ES_KEY_BROKER..."
+
+MAX_RETRIES=10
+RETRY_WAIT=30
+
+for attempt in $(seq 1 $MAX_RETRIES); do
+    echo "Attempt $attempt of $MAX_RETRIES at $(date)"
+    
+    # Fetch the response
+    curl -s $PROXY_ES_KEY_BROKER > /tmp/project_results.json
+    
+    if [ $? -eq 0 ]; then
+        echo "Project results saved to /tmp/project_results.json"
+        
+        # Check if the response contains valid JSON and has the api_key
+        if command -v jq &> /dev/null; then
+            # Use jq to validate JSON and extract api_key
+            API_KEY=$(jq -r '.["aws-us-east-1"].credentials.api_key' /tmp/project_results.json 2>/dev/null)
+            
+            if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+                echo "API key found successfully: ${API_KEY:0:10}..."
+                break
+            else
+                echo "API key not found or invalid in response on attempt $attempt"
+                [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+            fi
+        else
+            # Fallback to grep/sed if jq is not available
+            API_KEY=$(grep -o '"api_key": "[^"]*"' /tmp/project_results.json | sed 's/"api_key": "\([^"]*\)"/\1/' 2>/dev/null)
+            
+            if [ ! -z "$API_KEY" ]; then
+                echo "API key found successfully: ${API_KEY:0:10}..."
+                break
+            else
+                echo "API key not found in response on attempt $attempt"
+                [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+            fi
+        fi
+    else
+        echo "Failed to fetch project results from $PROXY_ES_KEY_BROKER on attempt $attempt"
+        [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
+    fi
+done
+
+# Check if we successfully got the API key after all attempts
+if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
+    echo "Error: Failed to retrieve valid API key after $MAX_RETRIES attempts"
+    echo "Last response content:"
+    cat /tmp/project_results.json
+    exit 1
+fi
+
+
+# Clean up any existing repository
+if [ -d "/root/hotel-finder-query-constructor" ]; then
+    echo "Removing existing hotel-finder-query-constructor directory..."
+    rm -rf /root/hotel-finder-query-constructor
+fi
+
+git clone -b home-finder https://github.com/sunilemanjee/hotel-finder-query-constructor.git
+
+cd /root/hotel-finder-query-constructor
+
+# Copy template and update with actual values
+cp variables.env.template variables.env
+
+# Update the template with actual values
+if command -v sed &> /dev/null; then
+    # Update API key
+    sed -i "s/ES_API_KEY=.*/ES_API_KEY=\"$API_KEY\"/" variables.env
+    # Update ES URL
+    sed -i "s|ES_URL=.*|ES_URL=\"$ES_ENDPOINT\"|" variables.env
+    # Update username to elastic (if not already set)
+    sed -i "s/ES_USERNAME=.*/ES_USERNAME=elastic/" variables.env
+    # Clear password since we're using API key
+    sed -i "s/ES_PASSWORD=.*/ES_PASSWORD=/" variables.env
+    # Ensure USE_PASSWORD is false since we're using API key
+    sed -i "s/USE_PASSWORD=.*/USE_PASSWORD=false/" variables.env
+    
+    echo "Successfully updated variables.env with API key and endpoint"
+else
+    # Fallback if sed is not available
+    echo "Warning: sed not available, manually updating variables.env"
+    echo "Please update the following in variables.env:"
+    echo "  ES_API_KEY=\"$API_KEY\""
+    echo "  ES_URL=\"$ES_ENDPOINT\""
+    echo "  ES_USERNAME=elastic"
+    echo "  ES_PASSWORD="
+    echo "  USE_PASSWORD=false"
+fi
+
+# Create and activate the virtual environment
+echo "Creating virtual environment with python3.11..."
+python3.11 -m venv venv
+
+if [ -d "venv" ]; then
+    echo "Activating virtual environment..."
+    source venv/bin/activate
+    echo "Virtual environment activated successfully!"
+    
+    # Install requirements
+    if [ -f "requirements.txt" ]; then
+        echo "Installing Python dependencies from requirements.txt..."
+        pip install -r requirements.txt
+        if [ $? -eq 0 ]; then
+            echo "Dependencies installed successfully!"
+        else
+            echo "Error: Failed to install dependencies from requirements.txt"
+            exit 1
+        fi
+    else
+        echo "Warning: requirements.txt not found in the repository"
+    fi
+else
+    echo "Error: Failed to create virtual environment"
+    exit 1
+fi
+
+
+# Kill any existing process on port 5001
+echo "Checking for existing processes on port 5001..."
+EXISTING_PID=$(lsof -ti:5001 2>/dev/null)
+if [ ! -z "$EXISTING_PID" ]; then
+    echo "Found existing process(es) on port 5001: $EXISTING_PID"
+    echo "Killing existing process(es)..."
+    kill -9 $EXISTING_PID
+    sleep 2
+    echo "Existing processes killed"
+else
+    echo "No existing processes found on port 5001"
+fi
+
+# Create logs directory
+mkdir -p /root/hotel-finder-query-constructor/logs
+
+# Source environment and run in background with logging
+echo "Starting search UI in background..."
+source setup_env.sh
+
+# Run the application in background and redirect output to logs
+nohup python search_ui.py > /root/hotel-finder-query-constructor/logs/search_ui.log 2>&1 &
+
+# Get the background process ID
+SEARCH_UI_PID=$!
+
+# Save PID to file for later reference
+echo $SEARCH_UI_PID > /root/hotel-finder-query-constructor/logs/search_ui.pid
+
+echo "Search UI started in background with PID: $SEARCH_UI_PID"
+echo "Logs are being written to: /root/hotel-finder-query-constructor/logs/search_ui.log"
+echo "PID file saved to: /root/hotel-finder-query-constructor/logs/search_ui.pid"
