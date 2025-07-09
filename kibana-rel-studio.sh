@@ -45,14 +45,14 @@ setup_environment() {
             echo "API key retrieved successfully"
             
             # Update .env file with the API key
-            if grep -q "CONTENT_ELASTICSEARCH_API_KEY" .env; then
+            if grep -q "ELASTICSEARCH_API_KEY" .env; then
                 # Update existing line
-                sed -i "s|CONTENT_ELASTICSEARCH_API_KEY=.*|CONTENT_ELASTICSEARCH_API_KEY=$API_KEY|" .env
+                sed -i "s|ELASTICSEARCH_API_KEY=.*|ELASTICSEARCH_API_KEY=$API_KEY|" .env
             else
                 # Add new line
-                echo "CONTENT_ELASTICSEARCH_API_KEY=$API_KEY" >> .env
+                echo "ELASTICSEARCH_API_KEY=$API_KEY" >> .env
             fi
-            echo "CONTENT_ELASTICSEARCH_API_KEY updated in .env"
+            echo "ELASTICSEARCH_API_KEY updated in .env"
         else
             echo "Warning: Could not extract API key from response"
         fi
@@ -60,15 +60,20 @@ setup_environment() {
         echo "Warning: Failed to fetch API key from http://es3-api-v1:8081"
     fi
 
-    # Set the Elasticsearch URL in .env
-    if grep -q "CONTENT_ELASTICSEARCH_URL" .env; then
-        # Update existing line
-        sed -i "s|CONTENT_ELASTICSEARCH_URL=.*|CONTENT_ELASTICSEARCH_URL=http://es3-api-v1:8081|" .env
+    # Set ELASTICSEARCH_URL from ES_ENDPOINT environment variable
+    if [ ! -z "$ES_ENDPOINT" ]; then
+        if grep -q "ELASTICSEARCH_URL" .env; then
+            # Update existing line (uncomment if commented)
+            sed -i "s|^#ELASTICSEARCH_URL=|ELASTICSEARCH_URL=|" .env
+            sed -i "s|^ELASTICSEARCH_URL=.*|ELASTICSEARCH_URL=$ES_ENDPOINT|" .env
+        else
+            # Add new line
+            echo "ELASTICSEARCH_URL=$ES_ENDPOINT" >> .env
+        fi
+        echo "ELASTICSEARCH_URL set to $ES_ENDPOINT in .env"
     else
-        # Add new line
-        echo "CONTENT_ELASTICSEARCH_URL=http://es3-api-v1:8081" >> .env
+        echo "Warning: ES_ENDPOINT environment variable is not set"
     fi
-    echo "CONTENT_ELASTICSEARCH_URL set to http://es3-api-v1:8081 in .env"
 
     # Add environment variables to disable host checking for development servers
     if grep -q "WDS_SOCKET_HOST" .env; then
