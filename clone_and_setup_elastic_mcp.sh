@@ -312,13 +312,13 @@ if [ $? -eq 0 ]; then
         
         # Update Azure OpenAI configuration
         echo "Updating Azure OpenAI configuration in setenv.sh..."
-        sed -i 's|export AZURE_OPENAI_ENDPOINT="[^"]*"|export AZURE_OPENAI_ENDPOINT="'"$LLM_URL"'"|' setenv.sh
+        sed -i 's|export AZURE_OPENAI_ENDPOINT=.*|export AZURE_OPENAI_ENDPOINT="'"$LLM_URL"'"|' setenv.sh
         echo "AZURE_OPENAI_ENDPOINT updated to $LLM_URL"
         
-        sed -i 's|export AZURE_OPENAI_API_KEY="[^"]*"|export AZURE_OPENAI_API_KEY="'"$OPENAI_API_KEY"'"|' setenv.sh
+        sed -i 's|export AZURE_OPENAI_API_KEY=.*|export AZURE_OPENAI_API_KEY="'"$OPENAI_API_KEY"'"|' setenv.sh
         echo "AZURE_OPENAI_API_KEY updated in setenv.sh"
         
-        sed -i 's|export AZURE_OPENAI_MODEL="[^"]*"|export AZURE_OPENAI_MODEL="gpt-4o"|' setenv.sh
+        sed -i 's|export AZURE_OPENAI_MODEL=.*|export AZURE_OPENAI_MODEL="gpt-4o"|' setenv.sh
         echo "AZURE_OPENAI_MODEL updated to gpt-4o"
         
     else
