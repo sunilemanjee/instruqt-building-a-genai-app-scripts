@@ -79,13 +79,13 @@ agent variable set LLM_CHAT_URL https://$LLM_URL/v1/chat/completions
 # Script to clone Elastic-Python-MCP-Server and setup environment config
 
 # Fetch project results and store in /tmp/project_results.json
-echo "Fetching project results from $ES_ENDPOINT..."
-curl -s $ES_ENDPOINT > /tmp/project_results.json
+echo "Fetching project results from $PROXY_ES_KEY_BROKER..."
+curl -s $PROXY_ES_KEY_BROKER > /tmp/project_results.json
 
 if [ $? -eq 0 ]; then
     echo "Project results saved to /tmp/project_results.json"
 else
-    echo "Warning: Failed to fetch project results from $ES_ENDPOINT"
+    echo "Warning: Failed to fetch project results from $PROXY_ES_KEY_BROKER"
 fi
 
 echo "Cloning Elastic-Python-MCP-Server repository..."
@@ -128,12 +128,12 @@ if [ $? -eq 0 ]; then
     
     if [ -f "$CONFIG_FILE" ]; then
         echo "Updating ES_URL in $CONFIG_FILE..."
-        sed -i 's|export ES_URL="[^"]*"|export ES_URL="http://es3-api-v1:9200"|' "$CONFIG_FILE"
-        echo "ES_URL updated to http://es3-api-v1:9200"
+        sed -i 's|export ES_URL="[^"]*"|export ES_URL="'"$ES_ENDPOINT"'"|' "$CONFIG_FILE"
+        echo "ES_URL updated to $ES_ENDPOINT"
         
         # Fetch API key from the endpoint
-        echo "Fetching API key from $ES_ENDPOINT..."
-        API_RESPONSE=$(curl -s $ES_ENDPOINT)
+        echo "Fetching API key from $PROXY_ES_KEY_BROKER..."
+        API_RESPONSE=$(curl -s $PROXY_ES_KEY_BROKER)
         
         if [ $? -eq 0 ] && [ ! -z "$API_RESPONSE" ]; then
             # Extract API key using jq (if available) or grep/sed
@@ -153,7 +153,7 @@ if [ $? -eq 0 ]; then
                 echo "Warning: Could not extract API key from response"
             fi
         else
-            echo "Warning: Failed to fetch API key from $ES_ENDPOINT"
+            echo "Warning: Failed to fetch API key from $PROXY_ES_KEY_BROKER"
         fi
         
         # Update Google Maps API key
@@ -262,8 +262,8 @@ if [ $? -eq 0 ]; then
         echo "Updating setenv.sh with API configuration..."
         
                  # Fetch API key from the endpoint (reuse from earlier)
-         echo "Fetching API key from $ES_ENDPOINT..."
-         API_RESPONSE=$(curl -s $ES_ENDPOINT)
+         echo "Fetching API key from $PROXY_ES_KEY_BROKER..."
+         API_RESPONSE=$(curl -s $PROXY_ES_KEY_BROKER)
         
         if [ $? -eq 0 ] && [ ! -z "$API_RESPONSE" ]; then
             # Extract API key using jq (if available) or grep/sed
