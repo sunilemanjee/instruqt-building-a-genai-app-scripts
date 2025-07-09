@@ -247,6 +247,21 @@ if [ $? -eq 0 ]; then
     fi
     
     echo "Setup complete! The repository is ready for configuration."
+    
+    # Start the MCP server in the background
+    echo "Starting MCP server in background..."
+    cd /root/Elastic-Python-MCP-Server
+    
+    # Create logs directory if it doesn't exist
+    mkdir -p logs
+    
+    source env_config.sh && ./run_server.sh --background > logs/mcp_server.log 2>&1 &
+    MCP_PID=$!
+    echo "MCP server started with PID: $MCP_PID"
+    echo "Logs are being written to: logs/mcp_server.log"
+    echo "To view logs: tail -f logs/mcp_server.log"
+    echo "To stop the MCP server: kill $MCP_PID"
+    
 else
     echo "Error: Failed to clone the repository."
     exit 1
@@ -349,6 +364,21 @@ if [ $? -eq 0 ]; then
     else
         echo "Error: Failed to create virtual environment for Elastic-AI-Infused-Property-Search."
     fi
+    
+    # Start the Chainlit application in the background
+    echo "Starting Elastic AI Infused Property Search application in background..."
+    cd /root/Elastic-AI-Infused-Property-Search
+    
+    # Create logs directory if it doesn't exist
+    mkdir -p logs
+    
+    source setenv.sh && chainlit run src/app.py > logs/elastic_property_search.log 2>&1 &
+    CHAINLIT_PID=$!
+    echo "Chainlit application started with PID: $CHAINLIT_PID"
+    echo "Logs are being written to: logs/elastic_property_search.log"
+    echo "To view logs: tail -f logs/elastic_property_search.log"
+    echo "To stop the application: kill $CHAINLIT_PID"
+    
 else
     echo "Warning: Failed to clone Elastic-AI-Infused-Property-Search repository."
 fi 
