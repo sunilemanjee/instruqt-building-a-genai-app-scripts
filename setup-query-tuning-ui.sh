@@ -1,5 +1,56 @@
 #!/bin/bash
 
+###################
+# Request API key from LLM Proxy
+
+MAX_RETRIES=5
+RETRY_WAIT=5
+
+if [ -z "${SA_LLM_PROXY_BEARER_TOKEN}" ]; then
+    LLM_PROXY_BEARER_TOKEN=$LLM_PROXY_PROD
+else
+    LLM_PROXY_BEARER_TOKEN=$SA_LLM_PROXY_BEARER_TOKEN
+fi
+
+
+
+for attempt in $(seq 1 $MAX_RETRIES); do
+    echo "Attempt $attempt of $MAX_RETRIES at $(date)"
+
+    output=$(curl -X POST -s "https://$LLM_URL/key/generate" \
+    -H "Authorization: Bearer $LLM_PROXY_BEARER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"models\": $LLM_MODELS,
+      \"duration\": \"$LLM_KEY_DURATION\",
+      \"key_alias\": \"instruqt-$_SANDBOX_ID\",
+      \"max_budget\": $LLM_KEY_MAX_BUDGET,
+      \"metadata\": {
+        \"workshopId\": \"$WORKSHOP_KEY\",
+        \"inviteId\": \"$INSTRUQT_TRACK_INVITE_ID\",
+        \"userId\": \"$INSTRUQT_USER_ID\",
+        \"userEmail\": \"$INSTRUQT_USER_EMAIL\"
+      }
+    }")
+
+    OPENAI_API_KEY=$(echo $output | jq -r '.key')
+    
+    if [ -z "${OPENAI_API_KEY}" ]; then
+        echo "Failed to extract API key from response on attempt $attempt"
+        [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_WAIT
+    else
+        echo "Request successful and API key extracted on attempt $attempt"
+        break
+    fi
+done
+
+[ -z "$OPENAI_API_KEY" ] && echo "Failed to retrieve API key after $MAX_RETRIES attempts" && exit 1
+
+agent variable set LLM_KEY $OPENAI_API_KEY
+agent variable set LLM_HOST $LLM_URL
+agent variable set LLM_CHAT_URL https://$LLM_URL/v1/chat/completions
+
+
 # Fetch project results and store in /tmp/project_results.json
 echo "Fetching project results from $PROXY_ES_KEY_BROKER..."
 
@@ -81,6 +132,23 @@ if command -v sed &> /dev/null; then
     sed -i "s/USE_PASSWORD=.*/USE_PASSWORD=false/" variables.env
     
     echo "Successfully updated variables.env with API key and endpoint"
+
+    # Update Azure OpenAI configuration
+    echo "Updating Azure OpenAI configuration in variables.env.."
+    # Format LLM_URL with https:// prefix and trailing slash for Azure OpenAI endpoint
+    OPENAI_ENDPOINT="https://$LLM_URL/"
+    sed -i 's|OPENAI_ENDPOINT=.*|OPENAI_ENDPOINT='"$OPENAI_ENDPOINT"'|' variables.env
+    echo "OPENAI_ENDPOINT updated to $OPENAI_ENDPOINT"
+    
+    sed -i 's|OPENAI_API_KEY=.*|OPENAI_API_KEY='"$OPENAI_API_KEY"'|' variables.env
+    echo "OPENAI_API_KEY updated in variables.env"
+    
+    sed -i 's|OPENAI_MODEL=.*|OPENAI_MODEL=gpt-4o-global|' variables.env
+    echo "OPENAI_MODEL updated to gpt-4o-global"
+    
+    sed -i 's|OPENAI_API_VERSION=.*|OPENAI_API_VERSION=2025-01-01-preview|' variables.env
+    echo "OPENAI_API_VERSION updated to 2025-01-01-preview"
+        
 else
     # Fallback if sed is not available
     echo "Warning: sed not available, manually updating variables.env"
