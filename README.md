@@ -60,7 +60,7 @@ This project provides automation scripts for:
 ## Environment Variables
 
 The scripts use several environment variables:
-- `REGIONS` - AWS region (defaults to "us-east-1")
+- `REGIONS` - AWS region (no longer needed - scripts automatically detect the region from JSON)
 - `KIBANA_URL` - Kibana server URL
 - `ES_API_KEY` - Elasticsearch API key
 

@@ -25,9 +25,10 @@ setup_environment() {
             # Check if the response contains valid JSON and has the api_key
             if command -v jq &> /dev/null; then
                 # Use jq to validate JSON and extract api_key, ES_URL, and KIBANA_URL
-                API_KEY=$(jq -r '.["aws-us-east-1"].credentials.api_key' /tmp/project_results.json 2>/dev/null)
-                ES_URL=$(jq -r '.["aws-us-east-1"].endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
-                KIBANA_URL=$(jq -r '.["aws-us-east-1"].endpoints.kibana' /tmp/project_results.json 2>/dev/null)
+                # Get the first (and only) region key from the JSON
+                API_KEY=$(jq -r 'to_entries[0].value.credentials.api_key' /tmp/project_results.json 2>/dev/null)
+                ES_URL=$(jq -r 'to_entries[0].value.endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
+                KIBANA_URL=$(jq -r 'to_entries[0].value.endpoints.kibana' /tmp/project_results.json 2>/dev/null)
                 
                 if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ] && [ ! -z "$ES_URL" ] && [ "$ES_URL" != "null" ] && [ ! -z "$KIBANA_URL" ] && [ "$KIBANA_URL" != "null" ]; then
                     echo "API key found successfully: ${API_KEY:0:10}..."

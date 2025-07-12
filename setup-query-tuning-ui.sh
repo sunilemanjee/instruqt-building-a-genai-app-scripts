@@ -1,11 +1,5 @@
 #!/bin/bash
 
-
-agent variable set LLM_KEY $OPENAI_API_KEY
-agent variable set LLM_HOST $LLM_URL
-agent variable set LLM_CHAT_URL https://$LLM_URL/v1/chat/completions
-
-
 # Fetch project results and store in /tmp/project_results.json
 echo "Fetching project results from $PROXY_ES_KEY_BROKER..."
 
@@ -27,15 +21,16 @@ for attempt in $(seq 1 $MAX_RETRIES); do
         # Check if the response contains valid JSON and has the api_key
         if command -v jq &> /dev/null; then
             # Use jq to validate JSON and extract api_key, ES_URL, and KIBANA_URL
-            API_KEY=$(jq -r --arg region "$REGIONS" '.[$region].credentials.api_key' /tmp/project_results.json 2>/dev/null)
-            ES_URL=$(jq -r --arg region "$REGIONS" '.[$region].endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
-            KIBANA_URL=$(jq -r --arg region "$REGIONS" '.[$region].endpoints.kibana' /tmp/project_results.json 2>/dev/null)
+            # Get the first (and only) region key from the JSON
+            API_KEY=$(jq -r 'to_entries[0].value.credentials.api_key' /tmp/project_results.json 2>/dev/null)
+            ES_URL=$(jq -r 'to_entries[0].value.endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
+            KIBANA_URL=$(jq -r 'to_entries[0].value.endpoints.kibana' /tmp/project_results.json 2>/dev/null)
 
             echo "Reading LLM credentials from /tmp/project_results.json..."
             # Extract LLM credentials from the JSON file
-            OPENAI_API_KEY=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_api_key' /tmp/project_results.json)
-            LLM_HOST=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_host' /tmp/project_results.json)
-            LLM_CHAT_URL=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_chat_url' /tmp/project_results.json)
+            OPENAI_API_KEY=$(jq -r 'to_entries[0].value.credentials.llm_api_key' /tmp/project_results.json)
+            LLM_HOST=$(jq -r 'to_entries[0].value.credentials.llm_host' /tmp/project_results.json)
+            LLM_CHAT_URL=$(jq -r 'to_entries[0].value.credentials.llm_chat_url' /tmp/project_results.json)
             echo "OPENAI_API_KEY: $OPENAI_API_KEY"
             echo "LLM_HOST: $LLM_HOST"
             echo "LLM_CHAT_URL: $LLM_CHAT_URL"
@@ -129,8 +124,8 @@ if command -v sed &> /dev/null; then
 
     # Update Azure OpenAI configuration
     echo "Updating Azure OpenAI configuration in variables.env.."
-    # Format LLM_URL with https:// prefix and trailing slash for Azure OpenAI endpoint
-    OPENAI_ENDPOINT="https://$LLM_URL/"
+    # Format LLM_HOST with https:// prefix and trailing slash for Azure OpenAI endpoint
+    OPENAI_ENDPOINT="https://$LLM_HOST/"
     sed -i 's|OPENAI_ENDPOINT=.*|OPENAI_ENDPOINT='"$OPENAI_ENDPOINT"'|' variables.env
     echo "OPENAI_ENDPOINT updated to $OPENAI_ENDPOINT"
     

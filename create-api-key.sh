@@ -13,8 +13,8 @@ fail_message() {
   exit 1
 }
 
-ES_USERNAME=$(jq -r --arg region "$REGIONS" '.[$region].credentials.username' /tmp/project_results.json)
-ES_PASSWORD=$(jq -r --arg region "$REGIONS" '.[$region].credentials.password' /tmp/project_results.json)
+ES_USERNAME=$(jq -r 'to_entries[0].value.credentials.username' /tmp/project_results.json)
+ES_PASSWORD=$(jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json)
 
 # Create API key with specified privileges
 /tmp/venv/bin/python <<EOF
@@ -78,7 +78,9 @@ existing_encoded_api_key = None
 try:
     with open("/tmp/project_results.json", "r") as f:
         project_data = json.load(f)
-    existing_encoded_api_key = project_data.get("$REGIONS", {}).get("credentials", {}).get("api_key")
+    # Get the first (and only) region key from the JSON
+    first_region = list(project_data.keys())[0]
+    existing_encoded_api_key = project_data.get(first_region, {}).get("credentials", {}).get("api_key")
 except:
     pass
 
@@ -131,7 +133,7 @@ if not existing_encoded_api_key:
             project_data = json.load(f)
         
         # Add encoded_api_key to credentials
-        project_data["$REGIONS"]["credentials"]["api_key"] = encoded_api_key
+        project_data[first_region]["credentials"]["api_key"] = encoded_api_key
         
         # Write back to file
         with open("/tmp/project_results.json", "w") as f:

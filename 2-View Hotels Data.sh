@@ -18,17 +18,14 @@ if [ ! -f "/tmp/project_results.json" ]; then
     fail_message "Project results JSON file not found at /tmp/project_results.json"
 fi
 
-# Get the region from environment or use a default
-REGIONS=${REGIONS:-"us-east-1"}
-
 # Extract API key from the JSON file
-ES_API_KEY=$(jq -r --arg region "$REGIONS" '.[$region].credentials.api_key' /tmp/project_results.json)
+ES_API_KEY=$(jq -r 'to_entries[0].value.credentials.api_key' /tmp/project_results.json)
 
 if [ "$ES_API_KEY" = "null" ] || [ -z "$ES_API_KEY" ]; then
-    fail_message "Failed to extract API key from project results JSON for region: $REGIONS"
+    fail_message "Failed to extract API key from project results JSON"
 fi
 
-echo "Using API key for region: $REGIONS"
+echo "Using API key from project results"
 
 # Create inferencing endpoints and ingest data
 /tmp/venv/bin/python <<EOF

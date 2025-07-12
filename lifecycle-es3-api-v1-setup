@@ -3,6 +3,7 @@ set -euxo pipefail
 
 echo "Running track setup script on host es3-api-v1"
 
+
 # Wait for the Instruqt host bootstrap to finish
 until [ -f /opt/instruqt/bootstrap/host-bootstrap-completed ]
 do
@@ -63,14 +64,14 @@ if [ $counter -eq $timeout ]; then
     exit 1
 fi
 
-export KIBANA_URL=`jq -r --arg region "$REGIONS" '.[$region].endpoints.kibana' /tmp/project_results.json`
-export ELASTICSEARCH_PASSWORD=`jq -r --arg region "$REGIONS" '.[$region].credentials.password' /tmp/project_results.json`
-export ES_URL=`jq -r --arg region "$REGIONS" '.[$region].endpoints.elasticsearch' /tmp/project_results.json`
+export KIBANA_URL=`jq -r 'to_entries[0].value.endpoints.kibana' /tmp/project_results.json`
+export ELASTICSEARCH_PASSWORD=`jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json`
+export ES_URL=`jq -r 'to_entries[0].value.endpoints.elasticsearch' /tmp/project_results.json`
 
-agent variable set ES_KIBANA_URL `jq -r --arg region "$REGIONS" '.[$region].endpoints.kibana' /tmp/project_results.json`
-agent variable set ES_USERNAME `jq -r --arg region "$REGIONS" '.[$region].credentials.username'  /tmp/project_results.json`
-agent variable set ES_PASSWORD `jq -r --arg region "$REGIONS" '.[$region].credentials.password' /tmp/project_results.json`
-agent variable set ES_DEPLOYMENT_ID `jq -r --arg region "$REGIONS" '.[$region].id' /tmp/project_results.json`
+agent variable set ES_KIBANA_URL `jq -r 'to_entries[0].value.endpoints.kibana' /tmp/project_results.json`
+agent variable set ES_USERNAME `jq -r 'to_entries[0].value.credentials.username' /tmp/project_results.json`
+agent variable set ES_PASSWORD `jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json`
+agent variable set ES_DEPLOYMENT_ID `jq -r 'to_entries[0].value.id' /tmp/project_results.json`
 
 BASE64=$(echo -n "admin:${ELASTICSEARCH_PASSWORD}" | base64)
 KIBANA_URL_WITHOUT_PROTOCOL=$(echo $KIBANA_URL | sed -e 's#http[s]\?://##g')
@@ -140,8 +141,8 @@ fail_message() {
   exit 1
 }
 
-ES_USERNAME=$(jq -r --arg region "$REGIONS" '.[$region].credentials.username' /tmp/project_results.json)
-ES_PASSWORD=$(jq -r --arg region "$REGIONS" '.[$region].credentials.password' /tmp/project_results.json)
+ES_USERNAME=$(jq -r 'to_entries[0].value.credentials.username' /tmp/project_results.json)
+ES_PASSWORD=$(jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json)
 
 # Create API key with specified privileges
 /tmp/venv/bin/python <<EOF
@@ -205,7 +206,9 @@ existing_encoded_api_key = None
 try:
     with open("/tmp/project_results.json", "r") as f:
         project_data = json.load(f)
-    existing_encoded_api_key = project_data.get("$REGIONS", {}).get("credentials", {}).get("api_key")
+    # Get the first (and only) region key from the JSON
+    first_region = list(project_data.keys())[0]
+    existing_encoded_api_key = project_data.get(first_region, {}).get("credentials", {}).get("api_key")
 except:
     pass
 
@@ -258,7 +261,7 @@ if not existing_encoded_api_key:
             project_data = json.load(f)
         
         # Add encoded_api_key to credentials
-        project_data["$REGIONS"]["credentials"]["api_key"] = encoded_api_key
+        project_data[first_region]["credentials"]["api_key"] = encoded_api_key
         
         # Write back to file
         with open("/tmp/project_results.json", "w") as f:
@@ -297,6 +300,9 @@ fi
 for attempt in $(seq 1 $MAX_RETRIES); do
     echo "Attempt $attempt of $MAX_RETRIES at $(date)"
 
+    # Set default value for INSTRUQT_TRACK_INVITE_ID if not set
+    INSTRUQT_TRACK_INVITE_ID="${INSTRUQT_TRACK_INVITE_ID:-Testing-no-invite-link}"
+    
     output=$(curl -X POST -s "https://$LLM_URL/key/generate" \
     -H "Authorization: Bearer $LLM_PROXY_BEARER_TOKEN" \
     -H "Content-Type: application/json" \
@@ -346,16 +352,16 @@ with open("/tmp/project_results.json", "r") as f:
     project_data = json.load(f)
 
 # Add LLM credentials to the JSON structure
-if "$REGIONS" not in project_data:
-    project_data["$REGIONS"] = {}
+# Get the first (and only) region key from the JSON
+first_region = list(project_data.keys())[0]
 
-if "credentials" not in project_data["$REGIONS"]:
-    project_data["$REGIONS"]["credentials"] = {}
+if "credentials" not in project_data[first_region]:
+    project_data[first_region]["credentials"] = {}
 
 # Add the three LLM-related values
-project_data["$REGIONS"]["credentials"]["llm_api_key"] = "$OPENAI_API_KEY"
-project_data["$REGIONS"]["credentials"]["llm_host"] = "$LLM_URL"
-project_data["$REGIONS"]["credentials"]["llm_chat_url"] = "https://$LLM_URL/v1/chat/completions"
+project_data[first_region]["credentials"]["llm_api_key"] = "$OPENAI_API_KEY"
+project_data[first_region]["credentials"]["llm_host"] = "$LLM_URL"
+project_data[first_region]["credentials"]["llm_chat_url"] = "https://$LLM_URL/v1/chat/completions"
 
 # Write back to file
 with open("/tmp/project_results.json", "w") as f:

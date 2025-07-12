@@ -5,23 +5,20 @@ set -euxo pipefail  # Ensure script exits on errors
 KIBANA_URL="http://es3-api-v1:8080"
 DATA_VIEW_NAME="hotels"
 
-# Get the region from environment or use a default
-REGIONS=${REGIONS:-"us-east-1"}
-
 # Extract API key from project results JSON
 if [ ! -f "/tmp/project_results.json" ]; then
     echo "❌ Project results JSON file not found at /tmp/project_results.json" >&2
     exit 1
 fi
 
-ES_API_KEY=$(jq -r --arg region "$REGIONS" '.[$region].credentials.api_key' /tmp/project_results.json)
+ES_API_KEY=$(jq -r 'to_entries[0].value.credentials.api_key' /tmp/project_results.json)
 
 if [ "$ES_API_KEY" = "null" ] || [ -z "$ES_API_KEY" ]; then
-    echo "❌ Failed to extract API key from project results JSON for region: $REGIONS" >&2
+    echo "❌ Failed to extract API key from project results JSON" >&2
     exit 1
 fi
 
-echo "🔑 Using API key for region: $REGIONS"
+echo "🔑 Using API key from project results"
 
 # ✅ Run Python script and capture its return value
 PYTHON_EXIT_CODE=$(python3 <<EOF

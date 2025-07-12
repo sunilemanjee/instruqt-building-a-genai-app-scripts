@@ -52,14 +52,16 @@ for attempt in $(seq 1 $MAX_RETRIES); do
         # Check if the response contains valid JSON and has the api_key
         if command -v jq &> /dev/null; then
             # Use jq to validate JSON and extract api_key, ES_URL, and KIBANA_URL
-            API_KEY=$(jq -r '.["aws-us-east-1"].credentials.api_key' /tmp/project_results.json 2>/dev/null)
-            ES_URL=$(jq -r '.["aws-us-east-1"].endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
-            KIBANA_URL=$(jq -r '.["aws-us-east-1"].endpoints.kibana' /tmp/project_results.json 2>/dev/null)
+            # Get the first (and only) region key from the JSON
+            API_KEY=$(jq -r 'to_entries[0].value.credentials.api_key' /tmp/project_results.json 2>/dev/null)
+            ES_URL=$(jq -r 'to_entries[0].value.endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
+            KIBANA_URL=$(jq -r 'to_entries[0].value.endpoints.kibana' /tmp/project_results.json 2>/dev/null)
 
-            echo "Reading LLM credentials from /tmp/project_results.json..."# Extract LLM credentials from the JSON file
-            OPENAI_API_KEY=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_api_key' /tmp/project_results.json)
-            LLM_HOST=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_host' /tmp/project_results.json)
-            LLM_CHAT_URL=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_chat_url' /tmp/project_results.json)
+            echo "Reading LLM credentials from /tmp/project_results.json..."
+            # Extract LLM credentials from the JSON file
+            OPENAI_API_KEY=$(jq -r 'to_entries[0].value.credentials.llm_api_key' /tmp/project_results.json)
+            LLM_HOST=$(jq -r 'to_entries[0].value.credentials.llm_host' /tmp/project_results.json)
+            LLM_CHAT_URL=$(jq -r 'to_entries[0].value.credentials.llm_chat_url' /tmp/project_results.json)
             echo "OPENAI_API_KEY: $OPENAI_API_KEY"
             echo "LLM_HOST: $LLM_HOST"
             echo "LLM_CHAT_URL: $LLM_CHAT_URL"
@@ -69,7 +71,7 @@ for attempt in $(seq 1 $MAX_RETRIES); do
             agent variable set LLM_HOST $LLM_HOST
             agent variable set LLM_CHAT_URL $LLM_CHAT_URL
             
-            if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ] && [ ! -z "$ES_URL" ] && [ "$ES_URL" != "null" ] && [ ! -z "$KIBANA_URL" ] && [ "$KIBANA_URL" != "null" ]; then
+            if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ] && [ ! -z "$ES_URL" ] && [ "$ES_URL" != "null" ] && [ ! -z "$KIBANA_URL" ] && [ "$KIBANA_URL" != "null" ] && [ ! -z "$OPENAI_API_KEY" ] && [ "$OPENAI_API_KEY" != "null" ] && [ ! -z "$LLM_HOST" ] && [ "$LLM_HOST" != "null" ] && [ ! -z "$LLM_CHAT_URL" ] && [ "$LLM_CHAT_URL" != "null" ]; then
                 echo "API key found successfully: ${API_KEY:0:10}..."
                 echo "ES URL found: $ES_URL"
                 echo "Kibana URL found: $KIBANA_URL"
@@ -115,8 +117,8 @@ for attempt in $(seq 1 $MAX_RETRIES); do
 done
 
 # Check if we successfully got the API key and URLs after all attempts
-if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ] || [ -z "$ES_URL" ] || [ "$ES_URL" = "null" ] || [ -z "$KIBANA_URL" ] || [ "$KIBANA_URL" = "null" ]; then
-    echo "Error: Failed to retrieve valid API key, ES URL, or Kibana URL after $MAX_RETRIES attempts"
+if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ] || [ -z "$ES_URL" ] || [ "$ES_URL" = "null" ] || [ -z "$KIBANA_URL" ] || [ "$KIBANA_URL" = "null" ] || [ -z "$OPENAI_API_KEY" ] || [ "$OPENAI_API_KEY" = "null" ] || [ -z "$LLM_HOST" ] || [ "$LLM_HOST" = "null" ] || [ -z "$LLM_CHAT_URL" ] || [ "$LLM_CHAT_URL" = "null" ]; then
+    echo "Error: Failed to retrieve valid API key, ES URL, Kibana URL, or LLM credentials after $MAX_RETRIES attempts"
     echo "Last response content:"
     cat /tmp/project_results.json
     exit 1
@@ -310,8 +312,8 @@ if [ $? -eq 0 ]; then
         
         # Update Azure OpenAI configuration
         echo "Updating Azure OpenAI configuration in setenv.sh..."
-        # Format LLM_URL with https:// prefix and trailing slash for Azure OpenAI endpoint
-        AZURE_OPENAI_ENDPOINT="https://$LLM_URL/"
+        # Format LLM_HOST with https:// prefix and trailing slash for Azure OpenAI endpoint
+        AZURE_OPENAI_ENDPOINT="https://$LLM_HOST/"
         sed -i 's|export AZURE_OPENAI_ENDPOINT=.*|export AZURE_OPENAI_ENDPOINT="'"$AZURE_OPENAI_ENDPOINT"'"|' setenv.sh
         echo "AZURE_OPENAI_ENDPOINT updated to $AZURE_OPENAI_ENDPOINT"
         
