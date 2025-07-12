@@ -132,8 +132,8 @@ if command -v sed &> /dev/null; then
     sed -i "s|OPENAI_API_KEY=.*|OPENAI_API_KEY=\"$OPENAI_API_KEY\"|" variables.env
     echo "OPENAI_API_KEY updated in variables.env"
     
-    sed -i 's|OPENAI_MODEL=.*|OPENAI_MODEL=gpt-4o-global|' variables.env
-    echo "OPENAI_MODEL updated to gpt-4o-global"
+    sed -i 's|OPENAI_MODEL=.*|OPENAI_MODEL=gpt-4o|' variables.env
+    echo "OPENAI_MODEL updated to gpt-4o"
     
     sed -i 's|OPENAI_API_VERSION=.*|OPENAI_API_VERSION=2025-01-01-preview|' variables.env
     echo "OPENAI_API_VERSION updated to 2025-01-01-preview"
