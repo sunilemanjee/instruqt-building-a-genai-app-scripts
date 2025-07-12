@@ -46,6 +46,9 @@ counter=0
 while [ $counter -lt $timeout ]; do
     if [ -f "/tmp/project_results.json" ]; then
         echo "File found, continuing..."
+        echo "Project results content:"
+        cat /tmp/project_results.json
+        echo ""
         break
     fi
     

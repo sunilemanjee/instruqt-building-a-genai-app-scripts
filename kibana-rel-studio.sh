@@ -18,6 +18,9 @@ setup_environment() {
         
         if [ $? -eq 0 ]; then
             echo "Project results saved to /tmp/project_results.json"
+            echo "Project results content:"
+            cat /tmp/project_results.json
+            echo ""
             
             # Check if the response contains valid JSON and has the api_key
             if command -v jq &> /dev/null; then
