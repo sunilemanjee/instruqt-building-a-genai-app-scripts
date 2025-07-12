@@ -1,55 +1,5 @@
 #!/bin/bash
 
-###################
-# Request API key from LLM Proxy
-
-MAX_RETRIES=5
-RETRY_WAIT=5
-
-if [ -z "${SA_LLM_PROXY_BEARER_TOKEN}" ]; then
-    LLM_PROXY_BEARER_TOKEN=$LLM_PROXY_PROD
-else
-    LLM_PROXY_BEARER_TOKEN=$SA_LLM_PROXY_BEARER_TOKEN
-fi
-
-
-
-for attempt in $(seq 1 $MAX_RETRIES); do
-    echo "Attempt $attempt of $MAX_RETRIES at $(date)"
-
-    output=$(curl -X POST -s "https://$LLM_URL/key/generate" \
-    -H "Authorization: Bearer $LLM_PROXY_BEARER_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"models\": $LLM_MODELS,
-      \"duration\": \"$LLM_KEY_DURATION\",
-      \"key_alias\": \"instruqt-$_SANDBOX_ID\",
-      \"max_budget\": $LLM_KEY_MAX_BUDGET,
-      \"metadata\": {
-        \"workshopId\": \"$WORKSHOP_KEY\",
-        \"inviteId\": \"$INSTRUQT_TRACK_INVITE_ID\",
-        \"userId\": \"$INSTRUQT_USER_ID\",
-        \"userEmail\": \"$INSTRUQT_USER_EMAIL\"
-      }
-    }")
-
-    echo "=== LLM PROXY API RESPONSE ==="
-    echo "$output"
-    echo "=== END LLM PROXY RESPONSE ==="
-
-    OPENAI_API_KEY=$(echo $output | jq -r '.key')
-    
-    if [ -z "${OPENAI_API_KEY}" ]; then
-        echo "Failed to extract API key from response on attempt $attempt"
-        [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_WAIT
-    else
-        echo "Request successful and API key extracted on attempt $attempt"
-        echo "OPENAI_API_KEY: $OPENAI_API_KEY"
-        break
-    fi
-done
-
-[ -z "$OPENAI_API_KEY" ] && echo "Failed to retrieve API key after $MAX_RETRIES attempts" && exit 1
 
 agent variable set LLM_KEY $OPENAI_API_KEY
 agent variable set LLM_HOST $LLM_URL
@@ -74,11 +24,25 @@ for attempt in $(seq 1 $MAX_RETRIES); do
         # Check if the response contains valid JSON and has the api_key
         if command -v jq &> /dev/null; then
             # Use jq to validate JSON and extract api_key, ES_URL, and KIBANA_URL
-            API_KEY=$(jq -r '.["aws-us-east-1"].credentials.api_key' /tmp/project_results.json 2>/dev/null)
-            ES_URL=$(jq -r '.["aws-us-east-1"].endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
-            KIBANA_URL=$(jq -r '.["aws-us-east-1"].endpoints.kibana' /tmp/project_results.json 2>/dev/null)
+            API_KEY=$(jq -r --arg region "$REGIONS" '.[$region].credentials.api_key' /tmp/project_results.json 2>/dev/null)
+            ES_URL=$(jq -r --arg region "$REGIONS" '.[$region].endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
+            KIBANA_URL=$(jq -r --arg region "$REGIONS" '.[$region].endpoints.kibana' /tmp/project_results.json 2>/dev/null)
+
+            echo "Reading LLM credentials from /tmp/project_results.json..."
+            # Extract LLM credentials from the JSON file
+            OPENAI_API_KEY=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_api_key' /tmp/project_results.json)
+            LLM_HOST=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_host' /tmp/project_results.json)
+            LLM_CHAT_URL=$(jq -r --arg region "$REGIONS" '.[$region].credentials.llm_chat_url' /tmp/project_results.json)
+            echo "OPENAI_API_KEY: $OPENAI_API_KEY"
+            echo "LLM_HOST: $LLM_HOST"
+            echo "LLM_CHAT_URL: $LLM_CHAT_URL"
+
+            # Set agent variables with the retrieved LLM credentials
+            agent variable set LLM_KEY $OPENAI_API_KEY
+            agent variable set LLM_HOST $LLM_HOST
+            agent variable set LLM_CHAT_URL $LLM_CHAT_URL
             
-            if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ] && [ ! -z "$ES_URL" ] && [ "$ES_URL" != "null" ] && [ ! -z "$KIBANA_URL" ] && [ "$KIBANA_URL" != "null" ]; then
+            if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ] && [ ! -z "$ES_URL" ] && [ "$ES_URL" != "null" ] && [ ! -z "$KIBANA_URL" ] && [ "$KIBANA_URL" != "null" ] && [ ! -z "$OPENAI_API_KEY" ] && [ "$OPENAI_API_KEY" != "null" ] && [ ! -z "$LLM_HOST" ] && [ "$LLM_HOST" != "null" ] && [ ! -z "$LLM_CHAT_URL" ] && [ "$LLM_CHAT_URL" != "null" ]; then
                 echo "API key found successfully: ${API_KEY:0:10}..."
                 echo "ES URL found: $ES_URL"
                 echo "Kibana URL found: $KIBANA_URL"
@@ -124,8 +88,8 @@ for attempt in $(seq 1 $MAX_RETRIES); do
 done
 
 # Check if we successfully got the API key and URLs after all attempts
-if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ] || [ -z "$ES_URL" ] || [ "$ES_URL" = "null" ] || [ -z "$KIBANA_URL" ] || [ "$KIBANA_URL" = "null" ]; then
-    echo "Error: Failed to retrieve valid API key, ES URL, or Kibana URL after $MAX_RETRIES attempts"
+if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ] || [ -z "$ES_URL" ] || [ "$ES_URL" = "null" ] || [ -z "$KIBANA_URL" ] || [ "$KIBANA_URL" = "null" ] || [ -z "$OPENAI_API_KEY" ] || [ "$OPENAI_API_KEY" = "null" ] || [ -z "$LLM_HOST" ] || [ "$LLM_HOST" = "null" ] || [ -z "$LLM_CHAT_URL" ] || [ "$LLM_CHAT_URL" = "null" ]; then
+    echo "Error: Failed to retrieve valid API key, ES URL, Kibana URL, or LLM credentials after $MAX_RETRIES attempts"
     echo "Last response content:"
     cat /tmp/project_results.json
     exit 1

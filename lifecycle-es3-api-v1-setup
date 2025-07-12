@@ -277,93 +277,95 @@ EOF
 echo "API key creation completed successfully."
 
 
+###################
+# Request API key from LLM Proxy
 
-# Single wrapper script to create Python server and start it in background
+MAX_RETRIES=5
+RETRY_WAIT=5
 
-echo "Setting up JSON server on port 8081..."
+if [ -z "${SA_LLM_PROXY_BEARER_TOKEN}" ]; then
+    LLM_PROXY_BEARER_TOKEN=$LLM_PROXY_PROD
+else
+    LLM_PROXY_BEARER_TOKEN=$SA_LLM_PROXY_BEARER_TOKEN
+fi
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "Working directory: $SCRIPT_DIR"
 
-# Create the Python server file
-cat > "$SCRIPT_DIR/serve_json.py" << 'EOF'
-#!/usr/bin/env python3
-"""
-Simple HTTP server to serve /tmp/project_results.json on port 8081
-"""
 
+for attempt in $(seq 1 $MAX_RETRIES); do
+    echo "Attempt $attempt of $MAX_RETRIES at $(date)"
+
+    output=$(curl -X POST -s "https://$LLM_URL/key/generate" \
+    -H "Authorization: Bearer $LLM_PROXY_BEARER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"models\": $LLM_MODELS,
+      \"duration\": \"$LLM_KEY_DURATION\",
+      \"key_alias\": \"instruqt-$_SANDBOX_ID\",
+      \"max_budget\": $LLM_KEY_MAX_BUDGET,
+      \"metadata\": {
+        \"workshopId\": \"$WORKSHOP_KEY\",
+        \"inviteId\": \"$INSTRUQT_TRACK_INVITE_ID\",
+        \"userId\": \"$INSTRUQT_USER_ID\",
+        \"userEmail\": \"$INSTRUQT_USER_EMAIL\"
+      }
+    }")
+
+    echo "=== LLM PROXY API RESPONSE ==="
+    echo "$output"
+    echo "=== END LLM PROXY RESPONSE ==="
+
+    OPENAI_API_KEY=$(echo $output | jq -r '.key')
+    
+    if [ -z "${OPENAI_API_KEY}" ]; then
+        echo "Failed to extract API key from response on attempt $attempt"
+        [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_WAIT
+    else
+        echo "Request successful and API key extracted on attempt $attempt"
+        echo "OPENAI_API_KEY: $OPENAI_API_KEY"
+        break
+    fi
+done
+
+[ -z "$OPENAI_API_KEY" ] && echo "Failed to retrieve API key after $MAX_RETRIES attempts" && exit 1
+
+agent variable set LLM_KEY $OPENAI_API_KEY
+agent variable set LLM_HOST $LLM_URL
+agent variable set LLM_CHAT_URL https://$LLM_URL/v1/chat/completions
+
+# Add LLM API key results to project results JSON
+echo "Adding LLM API key results to project results JSON..."
+python3 <<EOF
 import json
 import os
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import sys
 
-class JSONHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        # Set CORS headers to allow cross-origin requests
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-        
-        try:
-            # Read the JSON file
-            with open('/tmp/project_results.json', 'r') as f:
-                json_data = f.read()
-            
-            # Send the JSON content
-            self.wfile.write(json_data.encode('utf-8'))
-            
-        except FileNotFoundError:
-            error_response = {
-                "error": "File not found",
-                "message": "/tmp/project_results.json does not exist"
-            }
-            self.wfile.write(json.dumps(error_response).encode('utf-8'))
-            
-        except Exception as e:
-            error_response = {
-                "error": "Server error",
-                "message": str(e)
-            }
-            self.wfile.write(json.dumps(error_response).encode('utf-8'))
-    
-    def do_OPTIONS(self):
-        # Handle preflight CORS requests
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
+# Read existing project results
+with open("/tmp/project_results.json", "r") as f:
+    project_data = json.load(f)
 
-def main():
-    port = 8081
-    server_address = ('', port)
-    
-    try:
-        httpd = HTTPServer(server_address, JSONHandler)
-        print(f"Server started on port {port}")
-        print(f"Serving /tmp/project_results.json")
-        print(f"Access at: http://localhost:{port}")
-        print("Press Ctrl+C to stop the server")
-        
-        httpd.serve_forever()
-        
-    except KeyboardInterrupt:
-        print("\nServer stopped.")
-        sys.exit(0)
-    except Exception as e:
-        print(f"Error starting server: {e}")
-        sys.exit(1)
+# Add LLM credentials to the JSON structure
+if "$REGIONS" not in project_data:
+    project_data["$REGIONS"] = {}
 
-if __name__ == '__main__':
-    main()
+if "credentials" not in project_data["$REGIONS"]:
+    project_data["$REGIONS"]["credentials"] = {}
+
+# Add the three LLM-related values
+project_data["$REGIONS"]["credentials"]["llm_api_key"] = "$OPENAI_API_KEY"
+project_data["$REGIONS"]["credentials"]["llm_host"] = "$LLM_URL"
+project_data["$REGIONS"]["credentials"]["llm_chat_url"] = "https://$LLM_URL/v1/chat/completions"
+
+# Write back to file
+with open("/tmp/project_results.json", "w") as f:
+    json.dump(project_data, f, indent=2)
+
+print("LLM API key results added to project results JSON")
 EOF
 
-# Make the Python script executable
-chmod +x "$SCRIPT_DIR/serve_json.py"
+#!/bin/bash
+echo "Restart NGINX"
+systemctl restart nginx
+
+echo "Setting up JSON server on port 8081..."
 
 # Check if the JSON file exists
 if [ ! -f "/tmp/project_results.json" ]; then
@@ -376,8 +378,7 @@ echo "Starting JSON server on port 8081..."
 
 # Start the server in background
 echo "Starting JSON server in background..."
-cd "$SCRIPT_DIR"
-nohup bash -c "cd '$SCRIPT_DIR' && python3 serve_json.py" > server.log 2>&1 &
+python3 bin/serve_json.py > /tmp/server-serve-json.log 2>&1 &
 
 # Get the process ID
 SERVER_PID=$!
@@ -388,26 +389,27 @@ sleep 2
 # Check if server started successfully
 sleep 2
 if kill -0 $SERVER_PID 2>/dev/null; then
-    echo "✅ Server started successfully!"
-    echo "📊 Server PID: $SERVER_PID"
-    echo "📝 Logs: server.log"
-    echo "🌐 Access URL: http://localhost:8081"
+    echo ":white_check_mark: Server started successfully!"
+    echo ":bar_chart: Server PID: $SERVER_PID"
+    echo ":memo: Logs: /tmp/server-serve-json.log"
+    echo ":globe_with_meridians: Access URL: http://localhost:8081"
     echo ""
-    echo "📋 Useful commands:"
-    echo "  View logs: tail -f server.log"
+    echo ":clipboard: Useful commands:"
+    echo "  View logs: tail -f /tmp/server-serve-json.log"
     echo "  Test server: curl http://localhost:8081"
     echo "  Stop server: kill $SERVER_PID"
     echo "  Check status: ps aux | grep serve_json"
 else
-    echo "❌ Failed to start server"
-    echo "Check server.log for details:"
-    if [ -f "server.log" ]; then
-        tail -5 server.log
+    echo ":x: Failed to start server"
+    echo "Check /tmp/server-serve-json.log for details:"
+    if [ -f "/tmp/server-serve-json.log" ]; then
+        tail -5 /tmp/server-serve-json.log
     else
         echo "No log file found"
     fi
     exit 1
 fi 
+
 
 
 echo "done"
