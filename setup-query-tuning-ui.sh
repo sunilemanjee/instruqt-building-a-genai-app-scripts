@@ -33,6 +33,10 @@ for attempt in $(seq 1 $MAX_RETRIES); do
       }
     }")
 
+    echo "=== LLM PROXY API RESPONSE ==="
+    echo "$output"
+    echo "=== END LLM PROXY RESPONSE ==="
+
     OPENAI_API_KEY=$(echo $output | jq -r '.key')
     
     if [ -z "${OPENAI_API_KEY}" ]; then
