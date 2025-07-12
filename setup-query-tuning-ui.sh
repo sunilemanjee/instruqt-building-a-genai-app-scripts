@@ -40,6 +40,7 @@ for attempt in $(seq 1 $MAX_RETRIES); do
         [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_WAIT
     else
         echo "Request successful and API key extracted on attempt $attempt"
+        echo "OPENAI_API_KEY: $OPENAI_API_KEY"
         break
     fi
 done
@@ -162,7 +163,7 @@ if command -v sed &> /dev/null; then
     sed -i 's|OPENAI_ENDPOINT=.*|OPENAI_ENDPOINT='"$OPENAI_ENDPOINT"'|' variables.env
     echo "OPENAI_ENDPOINT updated to $OPENAI_ENDPOINT"
     
-    sed -i 's|OPENAI_API_KEY=.*|OPENAI_API_KEY='"$OPENAI_API_KEY"'|' variables.env
+    sed -i "s|OPENAI_API_KEY=.*|OPENAI_API_KEY=\"$OPENAI_API_KEY\"|" variables.env
     echo "OPENAI_API_KEY updated in variables.env"
     
     sed -i 's|OPENAI_MODEL=.*|OPENAI_MODEL=gpt-4o-global|' variables.env
