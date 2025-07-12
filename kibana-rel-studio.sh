@@ -21,25 +21,47 @@ setup_environment() {
             
             # Check if the response contains valid JSON and has the api_key
             if command -v jq &> /dev/null; then
-                # Use jq to validate JSON and extract api_key
+                # Use jq to validate JSON and extract api_key, ES_URL, and KIBANA_URL
                 API_KEY=$(jq -r '.["aws-us-east-1"].credentials.api_key' /tmp/project_results.json 2>/dev/null)
+                ES_URL=$(jq -r '.["aws-us-east-1"].endpoints.elasticsearch' /tmp/project_results.json 2>/dev/null)
+                KIBANA_URL=$(jq -r '.["aws-us-east-1"].endpoints.kibana' /tmp/project_results.json 2>/dev/null)
                 
-                if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ]; then
+                if [ $? -eq 0 ] && [ ! -z "$API_KEY" ] && [ "$API_KEY" != "null" ] && [ ! -z "$ES_URL" ] && [ "$ES_URL" != "null" ] && [ ! -z "$KIBANA_URL" ] && [ "$KIBANA_URL" != "null" ]; then
                     echo "API key found successfully: ${API_KEY:0:10}..."
+                    echo "ES URL found: $ES_URL"
+                    echo "Kibana URL found: $KIBANA_URL"
+                    # Set agent variables
+                    echo "Setting agent variable ES_API_KEY..."
+                    agent variable set ES_API_KEY "$API_KEY"
+                    echo "Setting agent variable ES_URL..."
+                    agent variable set ES_URL "$ES_URL"
+                    echo "Setting agent variable KIBANA_URL..."
+                    agent variable set KIBANA_URL "$KIBANA_URL"
                     break
                 else
-                    echo "API key not found or invalid in response on attempt $attempt"
+                    echo "API key, ES URL, or Kibana URL not found or invalid in response on attempt $attempt"
                     [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
                 fi
             else
                 # Fallback to grep/sed if jq is not available
                 API_KEY=$(grep -o '"api_key": "[^"]*"' /tmp/project_results.json | sed 's/"api_key": "\([^"]*\)"/\1/' 2>/dev/null)
+                ES_URL=$(grep -o '"elasticsearch": "[^"]*"' /tmp/project_results.json | sed 's/"elasticsearch": "\([^"]*\)"/\1/' 2>/dev/null)
+                KIBANA_URL=$(grep -o '"kibana": "[^"]*"' /tmp/project_results.json | sed 's/"kibana": "\([^"]*\)"/\1/' 2>/dev/null)
                 
-                if [ ! -z "$API_KEY" ]; then
+                if [ ! -z "$API_KEY" ] && [ ! -z "$ES_URL" ] && [ ! -z "$KIBANA_URL" ]; then
                     echo "API key found successfully: ${API_KEY:0:10}..."
+                    echo "ES URL found: $ES_URL"
+                    echo "Kibana URL found: $KIBANA_URL"
+                    # Set agent variables
+                    echo "Setting agent variable ES_API_KEY..."
+                    agent variable set ES_API_KEY "$API_KEY"
+                    echo "Setting agent variable ES_URL..."
+                    agent variable set ES_URL "$ES_URL"
+                    echo "Setting agent variable KIBANA_URL..."
+                    agent variable set KIBANA_URL "$KIBANA_URL"
                     break
                 else
-                    echo "API key not found in response on attempt $attempt"
+                    echo "API key, ES URL, or Kibana URL not found in response on attempt $attempt"
                     [ $attempt -lt $MAX_RETRIES ] && echo "Waiting $RETRY_WAIT seconds before retry..." && sleep $RETRY_WAIT
                 fi
             fi
@@ -49,9 +71,9 @@ setup_environment() {
         fi
     done
 
-    # Check if we successfully got the API key after all attempts
-    if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
-        echo "Error: Failed to retrieve valid API key after $MAX_RETRIES attempts"
+    # Check if we successfully got the API key and URLs after all attempts
+    if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ] || [ -z "$ES_URL" ] || [ "$ES_URL" = "null" ] || [ -z "$KIBANA_URL" ] || [ "$KIBANA_URL" = "null" ]; then
+        echo "Error: Failed to retrieve valid API key, ES URL, or Kibana URL after $MAX_RETRIES attempts"
         echo "Last response content:"
         cat /tmp/project_results.json
         exit 1
@@ -89,19 +111,19 @@ setup_environment() {
         exit 1
     fi
 
-    # Set ELASTICSEARCH_URL from ES_ENDPOINT environment variable
-    if [ ! -z "$ES_ENDPOINT" ]; then
+    # Set ELASTICSEARCH_URL from extracted ES_URL
+    if [ ! -z "$ES_URL" ]; then
         if grep -q "ELASTICSEARCH_URL" .env; then
             # Update existing line (uncomment if commented)
             sed -i "s|^#ELASTICSEARCH_URL=|ELASTICSEARCH_URL=|" .env
-            sed -i "s|^ELASTICSEARCH_URL=.*|ELASTICSEARCH_URL=$ES_ENDPOINT|" .env
+            sed -i "s|^ELASTICSEARCH_URL=.*|ELASTICSEARCH_URL=$ES_URL|" .env
         else
             # Add new line
-            echo "ELASTICSEARCH_URL=$ES_ENDPOINT" >> .env
+            echo "ELASTICSEARCH_URL=$ES_URL" >> .env
         fi
-        echo "ELASTICSEARCH_URL set to $ES_ENDPOINT in .env"
+        echo "ELASTICSEARCH_URL set to $ES_URL in .env"
     else
-        echo "Warning: ES_ENDPOINT environment variable is not set"
+        echo "Warning: ES_URL not found in project results"
     fi
 
     # Add environment variables to disable host checking for development servers
