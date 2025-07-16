@@ -214,6 +214,76 @@ kill_port() {
     fi
 }
 
+# Function to kill evaluation worker process
+kill_evaluation_worker() {
+    echo "Stopping evaluation worker..."
+    pkill -f "python -m src.server.worker"
+    
+    echo "Checking if evaluation worker is still running..."
+    sleep 2
+    
+    # Check if evaluation worker is still running
+    if pgrep -f "python -m src.server.worker" > /dev/null; then
+        echo "Evaluation worker is still running"
+    else
+        echo "Evaluation worker stopped successfully"
+    fi
+}
+
+# Function to start evaluation worker
+start_evaluation_worker() {
+    echo "Starting evaluation worker..."
+    
+    # Kill any existing evaluation worker process first
+    kill_evaluation_worker
+    
+    # Initialize conda environment
+    echo 'eval "$(/root/miniconda3/bin/conda shell.bash hook)"' >> ~/.bashrc
+    source ~/.bashrc
+
+    # Create esrs conda environment if it doesn't exist
+    if ! conda env list | grep -q "esrs"; then
+        echo "Creating esrs conda environment..."
+        conda create -n esrs python=3.10 -y
+    fi
+
+    # Activate the esrs conda environment
+    conda activate esrs
+
+    # Change to the relevance-studio directory
+    cd /root/relevance-studio
+
+    # Create logs directory if it doesn't exist
+    mkdir -p logs
+
+    # Run the evaluation worker in the background with logging
+    python -m src.server.worker > logs/evaluation_worker.log 2>&1 &
+
+    # Store the PID
+    EVALUATION_WORKER_PID=$!
+    
+    echo "Evaluation worker started in background with PID: $EVALUATION_WORKER_PID"
+    echo "Evaluation worker logs will be written to: logs/evaluation_worker.log"
+
+    # Wait a moment and check if the process is running
+    sleep 2
+    if ps -p $EVALUATION_WORKER_PID > /dev/null; then
+        echo "Evaluation worker is running successfully"
+        echo "To view logs: tail -f logs/evaluation_worker.log"
+    else
+        echo "Failed to start evaluation worker"
+        exit 1
+    fi
+}
+
+# Function to restart evaluation worker
+restart_evaluation_worker() {
+    echo "Restarting evaluation worker..."
+    kill_evaluation_worker
+    sleep 2
+    start_evaluation_worker
+}
+
 # Function to kill any process running on port 8080
 kill_port_8080() {
     kill_port 8080
@@ -231,6 +301,9 @@ kill_servers() {
     
     echo "Stopping Yarn dev server..."
     pkill -f "yarn run dev"
+    
+    echo "Stopping evaluation worker..."
+    pkill -f "python -m src.server.worker"
     
     echo "Killing processes on ports 8080 and 4096..."
     kill_port_8080
@@ -251,6 +324,13 @@ kill_servers() {
         echo "Yarn dev server is still running"
     else
         echo "Yarn dev server stopped successfully"
+    fi
+    
+    # Check if evaluation worker is still running
+    if pgrep -f "python -m src.server.worker" > /dev/null; then
+        echo "Evaluation worker is still running"
+    else
+        echo "Evaluation worker stopped successfully"
     fi
 }
 
@@ -298,12 +378,17 @@ start_servers() {
         sleep 2
         if ps -p $! > /dev/null; then
             echo "Yarn dev is running successfully"
+            
+            # Start evaluation worker as the last step
+            start_evaluation_worker
+            
             echo ""
-            echo "Both servers are running in the background!"
+            echo "All servers are running in the background!"
             echo "To view logs:"
             echo "  Flask logs: tail -f logs/flask_server.log"
             echo "  Yarn logs: tail -f logs/yarn_dev.log"
-            echo "To stop servers: ./start-flask-and-yarn.sh --kill"
+            echo "  Evaluation worker logs: tail -f logs/evaluation_worker.log"
+            echo "To stop servers: $0 --kill"
         else
             echo "Failed to start yarn dev"
             exit 1
@@ -329,18 +414,24 @@ show_usage() {
     echo "Usage: $0 [OPTION]"
     echo ""
     echo "Options:"
-    echo "  --start, -s     Start Flask and Yarn servers (default)"
-    echo "  --kill, -k      Kill Flask and Yarn servers"
-    echo "  --restart, -r   Restart Flask and Yarn servers"
+    echo "  --start, -s     Start Flask, Yarn, and evaluation worker (default)"
+    echo "  --kill, -k      Kill Flask, Yarn, and evaluation worker"
+    echo "  --restart, -r   Restart Flask, Yarn, and evaluation worker"
     echo "  --setup, -e     Setup environment only (fetch API key, update .env)"
+    echo "  --worker-start  Start evaluation worker only"
+    echo "  --worker-kill   Kill evaluation worker only"
+    echo "  --worker-restart Restart evaluation worker only"
     echo "  --help, -h      Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0              # Start servers (default)"
-    echo "  $0 --start      # Start servers"
-    echo "  $0 --kill       # Kill servers"
-    echo "  $0 --restart    # Restart servers"
+    echo "  $0              # Start all servers (default)"
+    echo "  $0 --start      # Start all servers"
+    echo "  $0 --kill       # Kill all servers"
+    echo "  $0 --restart    # Restart all servers"
     echo "  $0 --setup      # Setup environment only"
+    echo "  $0 --worker-start  # Start evaluation worker only"
+    echo "  $0 --worker-kill   # Kill evaluation worker only"
+    echo "  $0 --worker-restart # Restart evaluation worker only"
 }
 
 # Parse command line arguments
@@ -356,6 +447,15 @@ case "${1:-start}" in
         ;;
     --setup|-e)
         setup_environment
+        ;;
+    --worker-start)
+        start_evaluation_worker
+        ;;
+    --worker-kill)
+        kill_evaluation_worker
+        ;;
+    --worker-restart)
+        restart_evaluation_worker
         ;;
     --help|-h)
         show_usage
