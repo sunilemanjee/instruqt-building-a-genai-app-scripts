@@ -89,4 +89,4 @@ else
         echo "ES_URL empty: $([ -z "$ES_URL" ] && echo "YES" || echo "NO")"
         exit 1
     fi
-fi 
+fi
