@@ -6,7 +6,7 @@
 if [ ! -f "/tmp/project_results.json" ]; then
     echo "Error: /tmp/project_results.json file not found"
     echo "Please run eland-setup.sh first to download the project results"
-    exit 1
+    return 1
 fi
 
 echo "Parsing /tmp/project_results.json..."
@@ -42,7 +42,7 @@ if command -v jq &> /dev/null; then
         echo "export ES_API_KEY=\"$ES_API_KEY\""
         echo "export ES_URL=\"$ES_URL\""
         
-        exit 0
+        return 0
     else
         echo "API key or ES URL not found or invalid in response"
         echo "DEBUG - Validation failed:"
@@ -50,7 +50,7 @@ if command -v jq &> /dev/null; then
         echo "API_KEY null: $([ "$API_KEY" = "null" ] && echo "YES" || echo "NO")"
         echo "ES_URL empty: $([ -z "$ES_URL" ] && echo "YES" || echo "NO")"
         echo "ES_URL null: $([ "$ES_URL" = "null" ] && echo "YES" || echo "NO")"
-        exit 1
+        return 1
     fi
 else
     echo "Using grep/sed fallback to parse JSON..."
@@ -81,12 +81,12 @@ else
         echo "export ES_API_KEY=\"$ES_API_KEY\""
         echo "export ES_URL=\"$ES_URL\""
         
-        exit 0
+        return 0
     else
         echo "API key or ES URL not found in response"
         echo "DEBUG - Validation failed (grep/sed):"
         echo "API_KEY empty: $([ -z "$API_KEY" ] && echo "YES" || echo "NO")"
         echo "ES_URL empty: $([ -z "$ES_URL" ] && echo "YES" || echo "NO")"
-        exit 1
+        return 1
     fi
 fi
