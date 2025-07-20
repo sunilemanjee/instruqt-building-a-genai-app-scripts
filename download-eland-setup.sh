@@ -109,4 +109,4 @@ else
     echo "Please check your internet connection and try again"
     echo "URL: $ENV_VARS_URL"
     exit 1
-fi 
+fi
