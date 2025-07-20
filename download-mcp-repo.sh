@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This file is maintained in git at:
+# https://github.com/sunilemanjee/instruqt-building-a-genai-app-scripts
+#
 # Script to download clone_and_setup_elastic_mcp.sh from GitHub and install it
 
 # Set error handling

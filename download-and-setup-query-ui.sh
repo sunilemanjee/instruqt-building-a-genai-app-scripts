@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This file is maintained in git at:
+# https://github.com/sunilemanjee/instruqt-building-a-genai-app-scripts
+#
 # Download and run setup-query-tuning-ui.sh script
 echo "Downloading setup-query-tuning-ui.sh from GitHub..."
 

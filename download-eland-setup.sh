@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This file is maintained in git at:
+# https://github.com/sunilemanjee/instruqt-building-a-genai-app-scripts
+#
 # Script to download eland-setup.sh from GitHub and install it
 
 # Define the target file path
