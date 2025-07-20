@@ -143,8 +143,4 @@ done
 
 echo ""
 echo "All scripts downloaded successfully!"
-echo "Installation complete!"
-echo ""
-echo "Now running reingest-with-endpoints.sh..."
-echo "----------------------------------------"
-"${INSTALL_DIR}/reingest-with-endpoints.sh" 
+echo "Installation complete!" 
