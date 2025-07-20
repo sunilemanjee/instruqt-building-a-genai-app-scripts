@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 # Install dependencies
-apt update && apt install -y python3-pip python3-venv
+apt update && apt install -y python3-pip python3-venv jq
 python3 -m venv /tmp/venv
 source /tmp/venv/bin/activate
 pip install --quiet elasticsearch==9.0.2
@@ -34,195 +34,35 @@ ES_HOST = "http://es3-api-v1:9200"
 # Connect to Elasticsearch using username and password
 es = Elasticsearch(ES_HOST, basic_auth=(ES_USERNAME, ES_PASSWORD), request_timeout=120)
 
-# Index mappings for the three different dense vector types
-int4_mapping = {
-    "mappings": {
-        "dynamic": "false",
-        "properties": {
-            "additional_urls": {"type": "keyword"},
-            "annual-tax": {"type": "integer"},
-            "body_content": {
-                "type": "text",
-                "copy_to": ["body_content_e5"]
-            },
-            "body_content_phrase": {"type": "text"},
-            "body_content_e5": {
-                "type": "semantic_text",
-                "inference_id": "my-e5-endpoint",
-                "model_settings": {
-                    "task_type": "text_embedding",
-                    "dimensions": 384,
-                    "similarity": "cosine",
-                    "element_type": "float"
-                },
-                "index_options": {
-                    "dense_vector": {"type": "int4_flat"}
-                }
-            },
-            "domains": {"type": "keyword"},
-            "full_html": {"type": "text", "index": False},
-            "geo_point": {
-                "properties": {
-                    "lat": {"type": "float"},
-                    "lon": {"type": "float"}
-                }
-            },
-            "headings": {"type": "text"},
-            "home-price": {"type": "integer"},
-            "id": {"type": "keyword"},
-            "last_crawled_at": {"type": "date"},
-            "latitude": {"type": "float"},
-            "links": {"type": "keyword"},
-            "listing-agent-info": {"type": "text"},
-            "location": {"type": "geo_point"},
-            "longitude": {"type": "float"},
-            "maintenance-fee": {"type": "integer"},
-            "meta_description": {"type": "text"},
-            "meta_keywords": {"type": "keyword"},
-            "number-of-bathrooms": {"type": "float"},
-            "number-of-bedrooms": {"type": "float"},
-            "property-description": {"type": "text"},
-            "property-features": {"type": "text"},
-            "property-status": {"type": "keyword"},
-            "square-footage": {"type": "float"},
-            "title": {"type": "text"},
-            "url": {"type": "keyword"},
-            "url_host": {"type": "keyword"},
-            "url_path": {"type": "keyword"},
-            "url_path_dir1": {"type": "keyword"},
-            "url_path_dir2": {"type": "keyword"},
-            "url_path_dir3": {"type": "keyword"},
-            "url_port": {"type": "keyword"},
-            "url_scheme": {"type": "keyword"}
-        }
-    }
-}
+def load_mapping_from_file(filename):
+    """Load index mapping from JSON file"""
+    try:
+        with open(filename, 'r') as f:
+            content = f.read()
+            # Remove the PUT line and extract just the JSON body
+            if content.startswith('PUT'):
+                # Find the first { and extract from there
+                json_start = content.find('{')
+                if json_start != -1:
+                    json_content = content[json_start:]
+                    return json.loads(json_content)
+            else:
+                return json.loads(content)
+    except Exception as e:
+        print(f"Error loading mapping from {filename}: {e}")
+        return None
 
-int8_mapping = {
-    "mappings": {
-        "dynamic": "false",
-        "properties": {
-            "additional_urls": {"type": "keyword"},
-            "annual-tax": {"type": "integer"},
-            "body_content": {
-                "type": "text",
-                "copy_to": ["body_content_e5"]
-            },
-            "body_content_phrase": {"type": "text"},
-            "body_content_e5": {
-                "type": "semantic_text",
-                "inference_id": "my-e5-endpoint",
-                "model_settings": {
-                    "task_type": "text_embedding",
-                    "dimensions": 384,
-                    "similarity": "cosine",
-                    "element_type": "float"
-                },
-                "index_options": {
-                    "dense_vector": {"type": "int8_flat"}
-                }
-            },
-            "domains": {"type": "keyword"},
-            "full_html": {"type": "text", "index": False},
-            "geo_point": {
-                "properties": {
-                    "lat": {"type": "float"},
-                    "lon": {"type": "float"}
-                }
-            },
-            "headings": {"type": "text"},
-            "home-price": {"type": "integer"},
-            "id": {"type": "keyword"},
-            "last_crawled_at": {"type": "date"},
-            "latitude": {"type": "float"},
-            "links": {"type": "keyword"},
-            "listing-agent-info": {"type": "text"},
-            "location": {"type": "geo_point"},
-            "longitude": {"type": "float"},
-            "maintenance-fee": {"type": "integer"},
-            "meta_description": {"type": "text"},
-            "meta_keywords": {"type": "keyword"},
-            "number-of-bathrooms": {"type": "float"},
-            "number-of-bedrooms": {"type": "float"},
-            "property-description": {"type": "text"},
-            "property-features": {"type": "text"},
-            "property-status": {"type": "keyword"},
-            "square-footage": {"type": "float"},
-            "title": {"type": "text"},
-            "url": {"type": "keyword"},
-            "url_host": {"type": "keyword"},
-            "url_path": {"type": "keyword"},
-            "url_path_dir1": {"type": "keyword"},
-            "url_path_dir2": {"type": "keyword"},
-            "url_path_dir3": {"type": "keyword"},
-            "url_port": {"type": "keyword"},
-            "url_scheme": {"type": "keyword"}
-        }
-    }
-}
+# Load mappings from JSON files
+print("Loading index mappings from JSON files...")
+int4_mapping = load_mapping_from_file('index-mapping-int4flat.json')
+int8_mapping = load_mapping_from_file('index-mapping-int8flat.json')
+bbq_mapping = load_mapping_from_file('index-mapping-bbqflat.json')
 
-bbq_mapping = {
-    "mappings": {
-        "dynamic": "false",
-        "properties": {
-            "additional_urls": {"type": "keyword"},
-            "annual-tax": {"type": "integer"},
-            "body_content": {
-                "type": "text",
-                "copy_to": ["body_content_e5"]
-            },
-            "body_content_phrase": {"type": "text"},
-            "body_content_e5": {
-                "type": "semantic_text",
-                "inference_id": "my-e5-endpoint",
-                "model_settings": {
-                    "task_type": "text_embedding",
-                    "dimensions": 384,
-                    "similarity": "cosine",
-                    "element_type": "float"
-                },
-                "index_options": {
-                    "dense_vector": {"type": "bbq_flat"}
-                }
-            },
-            "domains": {"type": "keyword"},
-            "full_html": {"type": "text", "index": False},
-            "geo_point": {
-                "properties": {
-                    "lat": {"type": "float"},
-                    "lon": {"type": "float"}
-                }
-            },
-            "headings": {"type": "text"},
-            "home-price": {"type": "integer"},
-            "id": {"type": "keyword"},
-            "last_crawled_at": {"type": "date"},
-            "latitude": {"type": "float"},
-            "links": {"type": "keyword"},
-            "listing-agent-info": {"type": "text"},
-            "location": {"type": "geo_point"},
-            "longitude": {"type": "float"},
-            "maintenance-fee": {"type": "integer"},
-            "meta_description": {"type": "text"},
-            "meta_keywords": {"type": "keyword"},
-            "number-of-bathrooms": {"type": "float"},
-            "number-of-bedrooms": {"type": "float"},
-            "property-description": {"type": "text"},
-            "property-features": {"type": "text"},
-            "property-status": {"type": "keyword"},
-            "square-footage": {"type": "float"},
-            "title": {"type": "text"},
-            "url": {"type": "keyword"},
-            "url_host": {"type": "keyword"},
-            "url_path": {"type": "keyword"},
-            "url_path_dir1": {"type": "keyword"},
-            "url_path_dir2": {"type": "keyword"},
-            "url_path_dir3": {"type": "keyword"},
-            "url_port": {"type": "keyword"},
-            "url_scheme": {"type": "keyword"}
-        }
-    }
-}
+if not int4_mapping or not int8_mapping or not bbq_mapping:
+    print("Error: Could not load one or more mapping files!")
+    exit(1)
+
+print("Successfully loaded all index mappings from JSON files.")
 
 def create_index(index_name, mapping):
     """Create an index with the specified mapping"""
