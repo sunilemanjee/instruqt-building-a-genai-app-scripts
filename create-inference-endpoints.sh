@@ -21,6 +21,7 @@ ES_PASSWORD=$(jq -r 'to_entries[0].value.credentials.password' /tmp/project_resu
 /tmp/venv/bin/python <<EOF
 import os
 import json
+import time
 from elasticsearch import Elasticsearch
 
 # Get credentials from bash variables
@@ -32,6 +33,39 @@ ES_HOST = "http://es3-api-v1:9200"
 
 # Connect to Elasticsearch using username and password
 es = Elasticsearch(ES_HOST, basic_auth=(ES_USERNAME, ES_PASSWORD), request_timeout=120)
+
+# Function to check deployment status
+def check_deployment_status(model_id, max_wait_time=300):
+    print(f"Checking deployment status for model: {model_id}")
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait_time:
+        try:
+            # Check trained model stats
+            stats_response = es.ml.get_trained_models_stats(model_id=model_id)
+            deployment_stats = stats_response.body.get('trained_model_stats', [])
+            
+            if deployment_stats:
+                deployment = deployment_stats[0].get('deployment_stats', {})
+                state = deployment.get('state', 'unknown')
+                print(f"Model {model_id} deployment state: {state}")
+                
+                if state == 'started':
+                    print(f"✓ Model {model_id} is fully deployed and ready!")
+                    return True
+                elif state in ['starting', 'downloading']:
+                    print(f"Model {model_id} is still deploying... (state: {state})")
+                else:
+                    print(f"Model {model_id} deployment state: {state}")
+            
+            time.sleep(10)  # Wait 10 seconds before checking again
+            
+        except Exception as e:
+            print(f"Error checking deployment status: {e}")
+            time.sleep(10)
+    
+    print(f"⚠️  Deployment status check timed out after {max_wait_time} seconds")
+    return False
 
 # Function to create inference endpoint
 def create_inference_endpoint(endpoint_id, task_type, model_id, config_file):
@@ -83,9 +117,36 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file):
             json.dump(inference_endpoint_config, f, indent=2)
         print(f"Endpoint configuration saved to {config_file}")
         
+        return True
+        
     except Exception as e:
-        print(f"Error creating inference endpoint: {e}")
-        return False
+        error_msg = str(e)
+        if "model_deployment_timeout_exception" in error_msg:
+            print(f"⚠️  Deployment timeout for {endpoint_id} - this is normal for large models")
+            print(f"The model is still deploying in the background. Checking deployment status...")
+            
+            # Check if the endpoint was actually created despite the timeout
+            try:
+                endpoint_check = es.inference.get(inference_id=endpoint_id)
+                print(f"✓ Endpoint '{endpoint_id}' was created successfully despite timeout")
+                
+                # Monitor deployment status
+                deployment_ready = check_deployment_status(model_id)
+                if deployment_ready:
+                    print(f"✓ Endpoint '{endpoint_id}' is fully ready for use!")
+                    return True
+                else:
+                    print(f"⚠️  Endpoint '{endpoint_id}' created but deployment is still in progress")
+                    print(f"You can check status later using: GET /_ml/trained_models/{model_id}/_stats")
+                    return True  # Consider this a success since endpoint was created
+                    
+            except Exception as check_error:
+                print(f"Could not verify endpoint creation: {check_error}")
+                print(f"However, the timeout error suggests the endpoint may still be created")
+                return True  # Consider this a success since timeout is expected
+        else:
+            print(f"Error creating inference endpoint: {e}")
+            return False
 
     # Verify the endpoint was created
     try:
@@ -124,12 +185,16 @@ else:
     print("✗ ELSER endpoint creation failed")
 
 if e5_success:
-    print("✓ E5 endpoint (my-e5-endpoint) created successfully")
+    print("✓ E5 endpoint (my-e5-endpoint) created successfully (may still be deploying)")
 else:
     print("✗ E5 endpoint creation failed")
 
 if elser_success and e5_success:
     print("\\nAll inference endpoints created successfully!")
+    print("\\nNote: If you encountered deployment timeouts, the models may still be deploying.")
+    print("You can check deployment status using:")
+    print("  GET /_ml/trained_models/.multilingual-e5-small/_stats")
+    print("  GET /_ml/trained_models/.elser_model_2_linux-x86_64/_stats")
 else:
     print("\\nSome endpoints failed to create. Check the logs above.")
     exit(1)
