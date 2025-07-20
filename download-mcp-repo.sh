@@ -6,9 +6,9 @@
 set -e
 
 # Configuration
-SCRIPT_NAME="clone_and_setup_elastic_mcp.sh"
+SCRIPT_NAME="reingest-with-endpoints.sh"
 INSTALL_DIR="${INSTALL_DIR:-/root}"
-GITHUB_URL="https://raw.githubusercontent.com/sunilemanjee/instruqt-building-a-genai-app-scripts/main/${SCRIPT_NAME}"
+GITHUB_URL="https://raw.githubusercontent.com/sunilemanjee/instruqt-building-a-genai-app-scripts/refs/heads/main/${SCRIPT_NAME}"
 TARGET_PATH="${INSTALL_DIR}/${SCRIPT_NAME}"
 
 echo "Downloading ${SCRIPT_NAME} from GitHub..."
