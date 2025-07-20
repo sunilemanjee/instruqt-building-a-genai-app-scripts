@@ -1,0 +1,137 @@
+PUT properties_bbq
+{
+  "mappings": {
+    "dynamic": "false",
+    "properties": {
+      "additional_urls": {
+        "type": "keyword"
+      },
+      "annual-tax": {
+        "type": "integer"
+      },
+      "body_content": {
+        "type": "text",
+        "copy_to": [
+          "body_content_e5"
+        ]
+      },
+      "body_content_phrase": {
+        "type": "text"
+      },
+      "body_content_e5": {
+        "type": "semantic_text",
+        "inference_id": "my-e5-endpoint",
+        "model_settings": {
+          "task_type": "text_embedding",
+          "dimensions": 384,
+          "similarity": "cosine",
+          "element_type": "float"
+         
+        },
+        "index_options": {
+          "dense_vector": {
+            "type": "int4_flat"
+          }
+        }
+      },
+      "domains": {
+        "type": "keyword"
+      },
+      "full_html": {
+        "type": "text",
+        "index": false
+      },
+      "geo_point": {
+        "properties": {
+          "lat": {
+            "type": "float"
+          },
+          "lon": {
+            "type": "float"
+          }
+        }
+      },
+      "headings": {
+        "type": "text"
+      },
+      "home-price": {
+        "type": "integer"
+      },
+      "id": {
+        "type": "keyword"
+      },
+      "last_crawled_at": {
+        "type": "date"
+      },
+      "latitude": {
+        "type": "float"
+      },
+      "links": {
+        "type": "keyword"
+      },
+      "listing-agent-info": {
+        "type": "text"
+      },
+      "location": {
+        "type": "geo_point"
+      },
+      "longitude": {
+        "type": "float"
+      },
+      "maintenance-fee": {
+        "type": "integer"
+      },
+      "meta_description": {
+        "type": "text"
+      },
+      "meta_keywords": {
+        "type": "keyword"
+      },
+      "number-of-bathrooms": {
+        "type": "float"
+      },
+      "number-of-bedrooms": {
+        "type": "float"
+      },
+      "property-description": {
+        "type": "text"
+      },
+      "property-features": {
+        "type": "text"
+      },
+      "property-status": {
+        "type": "keyword"
+      },
+      "square-footage": {
+        "type": "float"
+      },
+      "title": {
+        "type": "text"
+      },
+      "url": {
+        "type": "keyword"
+      },
+      "url_host": {
+        "type": "keyword"
+      },
+      "url_path": {
+        "type": "keyword"
+      },
+      "url_path_dir1": {
+        "type": "keyword"
+      },
+      "url_path_dir2": {
+        "type": "keyword"
+      },
+      "url_path_dir3": {
+        "type": "keyword"
+      },
+      "url_port": {
+        "type": "keyword"
+      },
+      "url_scheme": {
+        "type": "keyword"
+      }
+    }
+  }
+}
