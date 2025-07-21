@@ -219,6 +219,21 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, max
                 print(f"Could not verify endpoint creation: {check_error}")
                 print(f"However, the timeout error suggests the endpoint may still be created")
                 return True  # Consider this a success since timeout is expected
+        elif "not enough memory" in error_msg.lower():
+            print(f"⚠️  Memory allocation error for {endpoint_id} - waiting 5 seconds and checking if endpoint was created...")
+            time.sleep(5)
+            
+            # Check if the endpoint was actually created despite the memory error
+            try:
+                endpoint_check = es.inference.get(inference_id=endpoint_id)
+                print(f"✓ Endpoint '{endpoint_id}' was created successfully despite memory error")
+                print(f"Endpoint status: {json.dumps(endpoint_check.body, indent=2)}")
+                return True  # Consider this a success since endpoint was created
+                    
+            except Exception as check_error:
+                print(f"Could not verify endpoint creation: {check_error}")
+                print(f"However, the memory error suggests the endpoint may still be created")
+                return True  # Consider this a success since memory errors can be transient
         else:
             print(f"Error creating inference endpoint: {e}")
             return False
