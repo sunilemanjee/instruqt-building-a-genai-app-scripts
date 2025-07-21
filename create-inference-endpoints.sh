@@ -62,17 +62,29 @@ def check_model_ready(model_id, max_wait_time=600):
             model_info = es.ml.get_trained_models(model_id=model_id)
             model_stats = es.ml.get_trained_models_stats(model_id=model_id)
             
-            # Check if model is fully downloaded
+            # Check if model exists
             if model_info.body.get('count', 0) > 0:
                 model_data = model_info.body.get('trained_model_configs', [{}])[0]
                 model_stats_data = model_stats.body.get('trained_model_stats', [{}])[0]
                 
-                # Check if model is fully downloaded
-                if model_data.get('fully_defined', False):
-                    print(f"✓ Model {model_id} is fully downloaded and ready!")
+                # Check deployment state first (more reliable indicator)
+                deployment_stats = model_stats_data.get('deployment_stats', {})
+                deployment_state = deployment_stats.get('state', 'unknown')
+                
+                if deployment_state == 'started':
+                    print(f"✓ Model {model_id} is deployed and ready!")
                     return True
+                elif deployment_state in ['starting', 'downloading']:
+                    print(f"Model {model_id} is still deploying... (state: {deployment_state})")
                 else:
-                    print(f"Model {model_id} is still downloading... (fully_defined: {model_data.get('fully_defined', False)})")
+                    # Fallback to fully_defined check
+                    if model_data.get('fully_defined', False):
+                        print(f"✓ Model {model_id} is fully downloaded and ready!")
+                        return True
+                    else:
+                        print(f"Model {model_id} is still downloading... (fully_defined: {model_data.get('fully_defined', False)}, deployment_state: {deployment_state})")
+            else:
+                print(f"Model {model_id} does not exist yet")
             
             time.sleep(15)  # Wait 15 seconds before checking again
             
