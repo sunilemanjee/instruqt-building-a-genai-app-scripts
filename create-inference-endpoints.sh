@@ -67,22 +67,27 @@ def check_model_ready(model_id, max_wait_time=600):
                 model_data = model_info.body.get('trained_model_configs', [{}])[0]
                 model_stats_data = model_stats.body.get('trained_model_stats', [{}])[0]
                 
-                # Check deployment state first (more reliable indicator)
+                # Check if model has deployment_stats (meaning it's deployed as an endpoint)
                 deployment_stats = model_stats_data.get('deployment_stats', {})
-                deployment_state = deployment_stats.get('state', 'unknown')
                 
-                if deployment_state == 'started':
-                    print(f"✓ Model {model_id} is deployed and ready!")
-                    return True
-                elif deployment_state in ['starting', 'downloading']:
-                    print(f"Model {model_id} is still deploying... (state: {deployment_state})")
+                if deployment_stats:
+                    # Model is deployed as an endpoint
+                    deployment_state = deployment_stats.get('state', 'unknown')
+                    
+                    if deployment_state == 'started':
+                        print(f"✓ Model {model_id} is deployed and ready!")
+                        return True
+                    elif deployment_state in ['starting', 'downloading']:
+                        print(f"Model {model_id} is still deploying... (state: {deployment_state})")
+                    else:
+                        print(f"Model {model_id} deployment state: {deployment_state}")
                 else:
-                    # Fallback to fully_defined check
+                    # Model exists but not deployed as an endpoint - check if it's fully downloaded
                     if model_data.get('fully_defined', False):
-                        print(f"✓ Model {model_id} is fully downloaded and ready!")
+                        print(f"✓ Model {model_id} is fully downloaded and ready for deployment!")
                         return True
                     else:
-                        print(f"Model {model_id} is still downloading... (fully_defined: {model_data.get('fully_defined', False)}, deployment_state: {deployment_state})")
+                        print(f"Model {model_id} is still downloading... (fully_defined: {model_data.get('fully_defined', False)})")
             else:
                 print(f"Model {model_id} does not exist yet")
             
