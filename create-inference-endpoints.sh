@@ -45,6 +45,12 @@ ES_HOST = "http://es3-api-v1:9200"
 # Connect to Elasticsearch using username and password
 es = Elasticsearch(ES_HOST, basic_auth=(ES_USERNAME, ES_PASSWORD), request_timeout=120)
 
+# Read allocation settings from environment variables
+ELSER_MIN_ALLOCATIONS = int(os.environ.get("ELSER_MIN_ALLOCATIONS", 2))
+ELSER_MAX_ALLOCATIONS = int(os.environ.get("ELSER_MAX_ALLOCATIONS", 4))
+E5_MIN_ALLOCATIONS = int(os.environ.get("E5_MIN_ALLOCATIONS", 2))
+E5_MAX_ALLOCATIONS = int(os.environ.get("E5_MAX_ALLOCATIONS", 4))
+
 # Function to check deployment status
 def check_deployment_status(model_id, max_wait_time=300):
     print(f"Checking deployment status for model: {model_id}")
