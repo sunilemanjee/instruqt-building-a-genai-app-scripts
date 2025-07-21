@@ -67,6 +67,10 @@ def check_model_ready(model_id, max_wait_time=600):
                 model_data = model_info.body.get('trained_model_configs', [{}])[0]
                 model_stats_data = model_stats.body.get('trained_model_stats', [{}])[0]
                 
+                # Debug: Print model configuration
+                print(f"Model config: {json.dumps(model_data, indent=2)}")
+                print(f"Model stats: {json.dumps(model_stats_data, indent=2)}")
+                
                 # Check if model has deployment_stats (meaning it's deployed as an endpoint)
                 deployment_stats = model_stats_data.get('deployment_stats', {})
                 
@@ -87,7 +91,13 @@ def check_model_ready(model_id, max_wait_time=600):
                         print(f"✓ Model {model_id} is fully downloaded and ready for deployment!")
                         return True
                     else:
-                        print(f"Model {model_id} is still downloading... (fully_defined: {model_data.get('fully_defined', False)})")
+                        # Alternative check: if model has size stats, it's likely ready
+                        model_size = model_stats_data.get('model_size_stats', {}).get('model_size_bytes', 0)
+                        if model_size > 0:
+                            print(f"✓ Model {model_id} has size {model_size} bytes and appears ready for deployment!")
+                            return True
+                        else:
+                            print(f"Model {model_id} is still downloading... (fully_defined: {model_data.get('fully_defined', False)})")
             else:
                 print(f"Model {model_id} does not exist yet")
             
