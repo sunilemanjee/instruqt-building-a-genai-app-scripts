@@ -120,6 +120,12 @@ if command -v sed &> /dev/null; then
     # Ensure USE_PASSWORD is false since we're using API key
     sed -i "s/USE_PASSWORD=.*/USE_PASSWORD=false/" variables.env
     
+    # Update ELSER inference ID
+    sed -i "s/ELSER_INFERENCE_ID=.*/ELSER_INFERENCE_ID=my-elser-endpoint/" variables.env
+    
+    # Update E5 inference ID
+    sed -i "s/E5_INFERENCE_ID=.*/E5_INFERENCE_ID=my-e5-endpoint/" variables.env
+    
     echo "Successfully updated variables.env with API key and endpoint"
 
     # Update Azure OpenAI configuration
