@@ -17,7 +17,18 @@ fail_message() {
 ES_USERNAME=$(jq -r 'to_entries[0].value.credentials.username' /tmp/project_results.json)
 ES_PASSWORD=$(jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json)
 
+# === Allocation settings (customize as needed) ===
+ELSER_MIN_ALLOCATIONS=2
+ELSER_MAX_ALLOCATIONS=4
+E5_MIN_ALLOCATIONS=2
+E5_MAX_ALLOCATIONS=4
+
 # Create inference endpoints using Python
+# Pass allocation variables as environment variables
+ELSER_MIN_ALLOCATIONS="$ELSER_MIN_ALLOCATIONS" \
+ELSER_MAX_ALLOCATIONS="$ELSER_MAX_ALLOCATIONS" \
+E5_MIN_ALLOCATIONS="$E5_MIN_ALLOCATIONS" \
+E5_MAX_ALLOCATIONS="$E5_MAX_ALLOCATIONS" \
 /tmp/venv/bin/python <<EOF
 import os
 import json
@@ -68,8 +79,8 @@ def check_deployment_status(model_id, max_wait_time=300):
     return False
 
 # Function to create inference endpoint
-def create_inference_endpoint(endpoint_id, task_type, model_id, config_file):
-    print(f"\\n=== Creating {endpoint_id} ===")
+def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, min_alloc, max_alloc):
+    print(f"\n=== Creating {endpoint_id} ===")
     
     # Delete the endpoint if it already exists
     try:
@@ -89,8 +100,8 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file):
         "service_settings": {
             "adaptive_allocations": {
                 "enabled": True,
-                "min_number_of_allocations": 2,
-                "max_number_of_allocations": 4
+                "min_number_of_allocations": min_alloc,
+                "max_number_of_allocations": max_alloc
             },
             "num_threads": 1,
             "model_id": model_id
@@ -166,7 +177,9 @@ elser_success = create_inference_endpoint(
     endpoint_id="my-elser-endpoint",
     task_type="sparse_embedding",
     model_id=".elser_model_2_linux-x86_64",
-    config_file="/tmp/elser_inference_endpoint_config.json"
+    config_file="/tmp/elser_inference_endpoint_config.json",
+    min_alloc=ELSER_MIN_ALLOCATIONS,
+    max_alloc=ELSER_MAX_ALLOCATIONS
 )
 
 # Create E5 endpoint (text embedding)
@@ -174,11 +187,13 @@ e5_success = create_inference_endpoint(
     endpoint_id="my-e5-endpoint",
     task_type="text_embedding",
     model_id=".multilingual-e5-small",
-    config_file="/tmp/e5_inference_endpoint_config.json"
+    config_file="/tmp/e5_inference_endpoint_config.json",
+    min_alloc=E5_MIN_ALLOCATIONS,
+    max_alloc=E5_MAX_ALLOCATIONS
 )
 
 # Summary
-print("\\n=== SUMMARY ===")
+print("\n=== SUMMARY ===")
 if elser_success:
     print("✓ ELSER endpoint (my-elser-endpoint) created successfully")
 else:
@@ -190,16 +205,16 @@ else:
     print("✗ E5 endpoint creation failed")
 
 if elser_success and e5_success:
-    print("\\nAll inference endpoints created successfully!")
-    print("\\nNote: If you encountered deployment timeouts, the models may still be deploying.")
+    print("\nAll inference endpoints created successfully!")
+    print("\nNote: If you encountered deployment timeouts, the models may still be deploying.")
     print("You can check deployment status using:")
     print("  GET /_ml/trained_models/.multilingual-e5-small/_stats")
     print("  GET /_ml/trained_models/.elser_model_2_linux-x86_64/_stats")
 else:
-    print("\\nSome endpoints failed to create. Check the logs above.")
+    print("\nSome endpoints failed to create. Check the logs above.")
     exit(1)
 
-print("\\nInference endpoints creation process completed.")
+print("\nInference endpoints creation process completed.")
 EOF
 
 echo "Inference endpoints creation script completed successfully." 
