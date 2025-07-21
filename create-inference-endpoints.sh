@@ -18,16 +18,12 @@ ES_USERNAME=$(jq -r 'to_entries[0].value.credentials.username' /tmp/project_resu
 ES_PASSWORD=$(jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json)
 
 # === Allocation settings (customize as needed) ===
-ELSER_MIN_ALLOCATIONS=2
 ELSER_MAX_ALLOCATIONS=4
-E5_MIN_ALLOCATIONS=2
 E5_MAX_ALLOCATIONS=4
 
 # Create inference endpoints using Python
 # Pass allocation variables as environment variables
-ELSER_MIN_ALLOCATIONS="$ELSER_MIN_ALLOCATIONS" \
 ELSER_MAX_ALLOCATIONS="$ELSER_MAX_ALLOCATIONS" \
-E5_MIN_ALLOCATIONS="$E5_MIN_ALLOCATIONS" \
 E5_MAX_ALLOCATIONS="$E5_MAX_ALLOCATIONS" \
 /tmp/venv/bin/python <<EOF
 import os
@@ -46,9 +42,7 @@ ES_HOST = "http://es3-api-v1:9200"
 es = Elasticsearch(ES_HOST, basic_auth=(ES_USERNAME, ES_PASSWORD), request_timeout=120)
 
 # Read allocation settings from environment variables
-ELSER_MIN_ALLOCATIONS = int(os.environ.get("ELSER_MIN_ALLOCATIONS", 2))
 ELSER_MAX_ALLOCATIONS = int(os.environ.get("ELSER_MAX_ALLOCATIONS", 4))
-E5_MIN_ALLOCATIONS = int(os.environ.get("E5_MIN_ALLOCATIONS", 2))
 E5_MAX_ALLOCATIONS = int(os.environ.get("E5_MAX_ALLOCATIONS", 4))
 
 # Function to check if model is ready (downloaded and available)
@@ -144,7 +138,7 @@ def check_deployment_status(model_id, max_wait_time=300):
     return False
 
 # Function to create inference endpoint
-def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, min_alloc, max_alloc):
+def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, max_alloc):
     print(f"\n=== Creating {endpoint_id} ===")
     
     # First, check if the model is ready before proceeding
@@ -171,7 +165,6 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, min
         "service_settings": {
             "adaptive_allocations": {
                 "enabled": True,
-                "min_number_of_allocations": min_alloc,
                 "max_number_of_allocations": max_alloc
             },
             "num_threads": 1,
@@ -249,7 +242,6 @@ elser_success = create_inference_endpoint(
     task_type="sparse_embedding",
     model_id=".elser_model_2_linux-x86_64",
     config_file="/tmp/elser_inference_endpoint_config.json",
-    min_alloc=ELSER_MIN_ALLOCATIONS,
     max_alloc=ELSER_MAX_ALLOCATIONS
 )
 
@@ -259,7 +251,6 @@ e5_success = create_inference_endpoint(
     task_type="text_embedding",
     model_id=".multilingual-e5-small",
     config_file="/tmp/e5_inference_endpoint_config.json",
-    min_alloc=E5_MIN_ALLOCATIONS,
     max_alloc=E5_MAX_ALLOCATIONS
 )
 
