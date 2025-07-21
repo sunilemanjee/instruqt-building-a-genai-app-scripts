@@ -51,6 +51,38 @@ ELSER_MAX_ALLOCATIONS = int(os.environ.get("ELSER_MAX_ALLOCATIONS", 4))
 E5_MIN_ALLOCATIONS = int(os.environ.get("E5_MIN_ALLOCATIONS", 2))
 E5_MAX_ALLOCATIONS = int(os.environ.get("E5_MAX_ALLOCATIONS", 4))
 
+# Function to check if model is ready (downloaded and available)
+def check_model_ready(model_id, max_wait_time=600):
+    print(f"Checking if model {model_id} is ready (downloaded and available)...")
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait_time:
+        try:
+            # Check if model exists and is ready
+            model_info = es.ml.get_trained_models(model_id=model_id)
+            model_stats = es.ml.get_trained_models_stats(model_id=model_id)
+            
+            # Check if model is fully downloaded
+            if model_info.body.get('count', 0) > 0:
+                model_data = model_info.body.get('trained_model_configs', [{}])[0]
+                model_stats_data = model_stats.body.get('trained_model_stats', [{}])[0]
+                
+                # Check if model is fully downloaded
+                if model_data.get('fully_defined', False):
+                    print(f"✓ Model {model_id} is fully downloaded and ready!")
+                    return True
+                else:
+                    print(f"Model {model_id} is still downloading... (fully_defined: {model_data.get('fully_defined', False)})")
+            
+            time.sleep(15)  # Wait 15 seconds before checking again
+            
+        except Exception as e:
+            print(f"Error checking model readiness: {e}")
+            time.sleep(15)
+    
+    print(f"⚠️  Model readiness check timed out after {max_wait_time} seconds")
+    return False
+
 # Function to check deployment status
 def check_deployment_status(model_id, max_wait_time=300):
     print(f"Checking deployment status for model: {model_id}")
@@ -87,6 +119,12 @@ def check_deployment_status(model_id, max_wait_time=300):
 # Function to create inference endpoint
 def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, min_alloc, max_alloc):
     print(f"\n=== Creating {endpoint_id} ===")
+    
+    # First, check if the model is ready before proceeding
+    print(f"Checking if model {model_id} is ready before creating endpoint...")
+    if not check_model_ready(model_id):
+        print(f"❌ Model {model_id} is not ready. Skipping endpoint creation.")
+        return False
     
     # Delete the endpoint if it already exists
     try:
