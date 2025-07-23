@@ -9,6 +9,7 @@
 set -e
 
 # Configuration
+MAIN_SCRIPT="clone_and_setup_elastic_mcp.sh"
 SCRIPTS=("reingest-with-endpoints.sh" "create-inference-endpoints.sh")
 QUANTIZATION_SCRIPTS=("create_indices_and_reindex.sh")
 QUANTIZATION_FILES=("index-mapping-int4flat.json" "index-mapping-int8flat.json" "index-mapping-bbqflat.json")
@@ -31,6 +32,36 @@ fi
 
 if [ ! -w "$INSTALL_DIR" ]; then
     echo "Error: Target directory $INSTALL_DIR is not writable"
+    exit 1
+fi
+
+# Download the main script (clone_and_setup_elastic_mcp.sh)
+GITHUB_URL="https://raw.githubusercontent.com/sunilemanjee/instruqt-building-a-genai-app-scripts/main/${MAIN_SCRIPT}"
+TARGET_PATH="${INSTALL_DIR}/${MAIN_SCRIPT}"
+
+echo "Downloading ${MAIN_SCRIPT} from GitHub..."
+
+# Check if file already exists and inform user it will be overwritten
+if [ -f "$TARGET_PATH" ]; then
+    echo "File $TARGET_PATH already exists - it will be overwritten"
+fi
+
+# Download the script using curl with error handling
+echo "Downloading from: $GITHUB_URL"
+if curl -f -L -o "$TARGET_PATH" "$GITHUB_URL"; then
+    echo "Successfully downloaded ${MAIN_SCRIPT} to $INSTALL_DIR/"
+    
+    # Make the script executable
+    if chmod 755 "$TARGET_PATH"; then
+        echo "Successfully set executable permissions (755) on $TARGET_PATH"
+    else
+        echo "Error: Failed to set executable permissions on $TARGET_PATH"
+        exit 1
+    fi
+else
+    echo "Error: Failed to download ${MAIN_SCRIPT} from GitHub"
+    echo "Please check your internet connection and try again"
+    echo "URL attempted: $GITHUB_URL"
     exit 1
 fi
 
@@ -143,4 +174,10 @@ done
 
 echo ""
 echo "All scripts downloaded successfully!"
-echo "Installation complete!" 
+echo "Installation complete!"
+
+# Now run the main script (clone_and_setup_elastic_mcp.sh)
+echo ""
+echo "Now running $TARGET_PATH..."
+echo "----------------------------------------"
+"${INSTALL_DIR}/${MAIN_SCRIPT}" 

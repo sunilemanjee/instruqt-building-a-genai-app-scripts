@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# This file is maintained in git at:
+# https://github.com/sunilemanjee/instruqt-building-a-genai-app-scripts
+#
 set -euxo pipefail
 
 # Install dependencies
