@@ -279,7 +279,7 @@ elser_success = create_inference_endpoint(
 e5_success = create_inference_endpoint(
     endpoint_id="my-e5-endpoint",
     task_type="text_embedding",
-    model_id=".multilingual-e5-small",
+    model_id=".multilingual-e5-small-elasticsearch",
     config_file="/tmp/e5_inference_endpoint_config.json",
     num_alloc=E5_NUM_ALLOCATIONS
 )
