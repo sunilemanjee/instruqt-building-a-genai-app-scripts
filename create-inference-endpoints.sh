@@ -45,6 +45,24 @@ es = Elasticsearch(ES_HOST, basic_auth=(ES_USERNAME, ES_PASSWORD), request_timeo
 ELSER_NUM_ALLOCATIONS = int(os.environ.get("ELSER_NUM_ALLOCATIONS", 4))
 E5_NUM_ALLOCATIONS = int(os.environ.get("E5_NUM_ALLOCATIONS", 4))
 
+# === PRESTEP: Delete properties index ===
+print("=== PRESTEP: Deleting properties index ===")
+try:
+    # Check if properties index exists
+    index_exists = es.indices.exists(index="properties")
+    if index_exists.body:
+        print("Properties index exists. Deleting it...")
+        delete_response = es.indices.delete(index="properties")
+        print("✓ Properties index deleted successfully!")
+        print(f"Delete response: {json.dumps(delete_response.body, indent=2)}")
+    else:
+        print("Properties index does not exist. Skipping deletion.")
+except Exception as e:
+    print(f"Warning: Could not delete properties index: {e}")
+    print("Continuing with inference endpoint creation...")
+
+print("Properties index deletion step completed.\n")
+
 # Function to check if model is ready (downloaded and available)
 def check_model_ready(model_id, max_wait_time=600):
     print(f"Checking if model {model_id} is ready (downloaded and available)...")
