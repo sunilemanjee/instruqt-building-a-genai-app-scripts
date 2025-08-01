@@ -103,11 +103,29 @@ def check_model_ready(model_id, max_wait_time=600):
                         print(f"✓ Model {model_id} is fully downloaded and ready for deployment!")
                         return True
                     else:
-                        # Alternative check: if model has size stats, it's likely ready
+                        # Check if model has size stats and is fully downloaded
                         model_size = model_stats_data.get('model_size_stats', {}).get('model_size_bytes', 0)
                         if model_size > 0:
-                            print(f"✓ Model {model_id} has size {model_size} bytes and appears ready for deployment!")
-                            return True
+                            # Additional check: verify the model is not still downloading
+                            try:
+                                # Try to get model tasks to check download status
+                                tasks_response = es.ml.get_trained_models_tasks(model_id=model_id)
+                                tasks = tasks_response.body.get('trained_model_configs', [])
+                                
+                                # Check if there are any active download tasks
+                                active_download_tasks = [task for task in tasks if 
+                                    task.get('state') in ['started', 'starting'] and 
+                                    task.get('task_type') == 'download']
+                                
+                                if not active_download_tasks:
+                                    print(f"✓ Model {model_id} has size {model_size} bytes and no active download tasks - ready for deployment!")
+                                    return True
+                                else:
+                                    print(f"Model {model_id} has size {model_size} bytes but download task is still active...")
+                            except Exception as task_error:
+                                # If we can't check tasks, assume model is ready if it has size
+                                print(f"✓ Model {model_id} has size {model_size} bytes and appears ready for deployment!")
+                                return True
                         else:
                             print(f"Model {model_id} is still downloading... (fully_defined: {model_data.get('fully_defined', False)})")
             else:
@@ -165,6 +183,10 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, num
         print(f"❌ Model {model_id} is not ready. Skipping endpoint creation.")
         return False
     
+    # Additional wait to ensure download is completely finished
+    print(f"Waiting additional 30 seconds to ensure model download is completely finished...")
+    time.sleep(30)
+    
     # Delete the endpoint if it already exists
     try:
         print(f"Checking if endpoint '{endpoint_id}' already exists...")
@@ -192,25 +214,29 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, num
         }
     }
 
-    # Create the inference endpoint using the correct API
-    try:
-        response = es.inference.put(
-            inference_id=endpoint_id,
-            task_type=task_type,
-            body=inference_endpoint_config
-        )
-        print(f"Inference endpoint '{endpoint_id}' created successfully!")
-        print(f"Response: {json.dumps(response.body, indent=2)}")
-        
-        # Save the endpoint configuration to a file for reference
-        with open(config_file, "w") as f:
-            json.dump(inference_endpoint_config, f, indent=2)
-        print(f"Endpoint configuration saved to {config_file}")
-        
-        return True
-        
-    except Exception as e:
-        error_msg = str(e)
+    # Create the inference endpoint using the correct API with retry logic
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            response = es.inference.put(
+                inference_id=endpoint_id,
+                task_type=task_type,
+                body=inference_endpoint_config
+            )
+            print(f"Inference endpoint '{endpoint_id}' created successfully!")
+            print(f"Response: {json.dumps(response.body, indent=2)}")
+            
+            # Save the endpoint configuration to a file for reference
+            with open(config_file, "w") as f:
+                json.dump(inference_endpoint_config, f, indent=2)
+            print(f"Endpoint configuration saved to {config_file}")
+            
+            return True
+            
+        except Exception as e:
+            error_msg = str(e)
         if "model_deployment_timeout_exception" in error_msg:
             print(f"⚠️  Deployment timeout for {endpoint_id} - this is normal for large models")
             print(f"The model is still deploying in the background. Checking deployment status...")
@@ -234,6 +260,17 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, num
                 print(f"Could not verify endpoint creation: {check_error}")
                 print(f"However, the timeout error suggests the endpoint may still be created")
                 return True  # Consider this a success since timeout is expected
+        elif "model download task is currently running" in error_msg.lower():
+            retry_count += 1
+            if retry_count < max_retries:
+                print(f"⚠️  Model download task is still running for {endpoint_id} (attempt {retry_count}/{max_retries})")
+                print(f"Waiting 60 seconds before retrying...")
+                time.sleep(60)
+                continue
+            else:
+                print(f"❌ Model download task is still running after {max_retries} attempts")
+                print(f"Consider waiting longer for the model to finish downloading")
+                return False
         elif "not enough memory" in error_msg.lower():
             print(f"⚠️  Memory allocation error for {endpoint_id} - waiting 5 seconds and checking if endpoint was created...")
             time.sleep(5)
@@ -250,8 +287,15 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, num
                 print(f"However, the memory error suggests the endpoint may still be created")
                 return True  # Consider this a success since memory errors can be transient
         else:
-            print(f"Error creating inference endpoint: {e}")
-            return False
+            retry_count += 1
+            if retry_count < max_retries:
+                print(f"⚠️  Error creating inference endpoint (attempt {retry_count}/{max_retries}): {e}")
+                print(f"Waiting 30 seconds before retrying...")
+                time.sleep(30)
+                continue
+            else:
+                print(f"❌ Error creating inference endpoint after {max_retries} attempts: {e}")
+                return False
 
     # Verify the endpoint was created
     try:
