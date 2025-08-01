@@ -41,9 +41,9 @@ if [ $? -eq 0 ]; then
         echo "Successfully set executable permissions (755) on $TARGET_FILE"
         echo "Installation complete!"
         echo ""
-        echo "Now sourcing $TARGET_FILE to set environment variables..."
+        echo "Now executing $TARGET_FILE to set environment variables..."
         echo "----------------------------------------"
-        source "$TARGET_FILE"
+        bash "$TARGET_FILE"
     else
         echo "Error: Failed to set executable permissions on $TARGET_FILE"
         exit 1
