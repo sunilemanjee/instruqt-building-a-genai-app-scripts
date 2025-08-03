@@ -177,22 +177,26 @@ def check_deployment_status(model_id, max_wait_time=300):
 def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, num_alloc):
     print(f"\n=== Creating {endpoint_id} ===")
     
-    # First, check if the model is ready before proceeding
-    print(f"Checking if model {model_id} is ready before creating endpoint...")
-    if not check_model_ready(model_id):
-        print(f"❌ Model {model_id} is not ready. Skipping endpoint creation.")
-        return False
-    
-    # Additional wait to ensure download is completely finished
-    print(f"Waiting additional 30 seconds to ensure model download is completely finished...")
-    time.sleep(30)
+    # For built-in models (E5 and ELSER), skip download checks since they're already available
+    if model_id in [".multilingual-e5-small_linux-x86_64", ".elser_model_2_linux-x86_64"]:
+        print(f"Built-in model detected ({model_id}) - skipping download checks since model is already available")
+    else:
+        # First, check if the model is ready before proceeding (for other models)
+        print(f"Checking if model {model_id} is ready before creating endpoint...")
+        if not check_model_ready(model_id):
+            print(f"❌ Model {model_id} is not ready. Skipping endpoint creation.")
+            return False
+        
+        # Additional wait to ensure download is completely finished
+        print(f"Waiting additional 30 seconds to ensure model download is completely finished...")
+        time.sleep(30)
     
     # Delete the endpoint if it already exists
     try:
         print(f"Checking if endpoint '{endpoint_id}' already exists...")
         existing_endpoint = es.inference.get(inference_id=endpoint_id)
         print(f"Endpoint exists. Deleting it first...")
-        delete_response = es.inference.delete(inference_id=endpoint_id)
+        delete_response = es.inference.delete(inference_id=endpoint_id, task_type=task_type)
         print(f"Existing endpoint deleted successfully!")
         print(f"Delete response: {json.dumps(delete_response.body, indent=2)}")
     except Exception as e:
@@ -220,11 +224,25 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, num
     
     while retry_count < max_retries:
         try:
-            response = es.inference.put(
-                inference_id=endpoint_id,
-                task_type=task_type,
-                body=inference_endpoint_config
-            )
+            # Use specific methods for each model type
+            if model_id == ".multilingual-e5-small_linux-x86_64":
+                response = es.inference.put_elasticsearch(
+                    elasticsearch_inference_id=endpoint_id,
+                    task_type=task_type,
+                    body=inference_endpoint_config
+                )
+            elif model_id == ".elser_model_2_linux-x86_64":
+                response = es.inference.put_elser(
+                    elser_inference_id=endpoint_id,
+                    task_type=task_type,
+                    body=inference_endpoint_config
+                )
+            else:
+                response = es.inference.put(
+                    inference_id=endpoint_id,
+                    task_type=task_type,
+                    body=inference_endpoint_config
+                )
             print(f"Inference endpoint '{endpoint_id}' created successfully!")
             print(f"Response: {json.dumps(response.body, indent=2)}")
             
@@ -237,65 +255,78 @@ def create_inference_endpoint(endpoint_id, task_type, model_id, config_file, num
             
         except Exception as e:
             error_msg = str(e)
-        if "model_deployment_timeout_exception" in error_msg:
-            print(f"⚠️  Deployment timeout for {endpoint_id} - this is normal for large models")
-            print(f"The model is still deploying in the background. Checking deployment status...")
-            
-            # Check if the endpoint was actually created despite the timeout
-            try:
-                endpoint_check = es.inference.get(inference_id=endpoint_id)
-                print(f"✓ Endpoint '{endpoint_id}' was created successfully despite timeout")
+            if "model_deployment_timeout_exception" in error_msg:
+                print(f"⚠️  Deployment timeout for {endpoint_id} - this is normal for large models")
+                print(f"The model is still deploying in the background. Checking deployment status...")
                 
-                # Monitor deployment status
-                deployment_ready = check_deployment_status(model_id)
-                if deployment_ready:
-                    print(f"✓ Endpoint '{endpoint_id}' is fully ready for use!")
-                    return True
+                # Check if the endpoint was actually created despite the timeout
+                try:
+                    endpoint_check = es.inference.get(inference_id=endpoint_id)
+                    print(f"✓ Endpoint '{endpoint_id}' was created successfully despite timeout")
+                    
+                    # Monitor deployment status
+                    deployment_ready = check_deployment_status(model_id)
+                    if deployment_ready:
+                        print(f"✓ Endpoint '{endpoint_id}' is fully ready for use!")
+                        return True
+                    else:
+                        print(f"⚠️  Endpoint '{endpoint_id}' created but deployment is still in progress")
+                        print(f"You can check status later using: GET /_ml/trained_models/{model_id}/_stats")
+                        return True  # Consider this a success since endpoint was created
+                        
+                except Exception as check_error:
+                    print(f"Could not verify endpoint creation: {check_error}")
+                    print(f"However, the timeout error suggests the endpoint may still be created")
+                    return True  # Consider this a success since timeout is expected
+            elif "model download task is currently running" in error_msg.lower():
+                # This shouldn't happen for built-in models, but handle it gracefully
+                if model_id in [".multilingual-e5-small_linux-x86_64", ".elser_model_2_linux-x86_64"]:
+                    print(f"⚠️  Unexpected download task error for built-in model ({model_id}) - this shouldn't happen")
+                    print(f"Model should already be available. Retrying...")
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        print(f"Waiting 30 seconds before retrying...")
+                        time.sleep(30)
+                        continue
+                    else:
+                        print(f"❌ Failed to create {model_id} endpoint after {max_retries} attempts")
+                        return False
                 else:
-                    print(f"⚠️  Endpoint '{endpoint_id}' created but deployment is still in progress")
-                    print(f"You can check status later using: GET /_ml/trained_models/{model_id}/_stats")
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        print(f"⚠️  Model download task is still running for {endpoint_id} (attempt {retry_count}/{max_retries})")
+                        print(f"Waiting 60 seconds before retrying...")
+                        time.sleep(60)
+                        continue
+                    else:
+                        print(f"❌ Model download task is still running after {max_retries} attempts")
+                        print(f"Consider waiting longer for the model to finish downloading")
+                        return False
+            elif "not enough memory" in error_msg.lower():
+                print(f"⚠️  Memory allocation error for {endpoint_id} - waiting 5 seconds and checking if endpoint was created...")
+                time.sleep(5)
+                
+                # Check if the endpoint was actually created despite the memory error
+                try:
+                    endpoint_check = es.inference.get(inference_id=endpoint_id)
+                    print(f"✓ Endpoint '{endpoint_id}' was created successfully despite memory error")
+                    print(f"Endpoint status: {json.dumps(endpoint_check.body, indent=2)}")
                     return True  # Consider this a success since endpoint was created
-                    
-            except Exception as check_error:
-                print(f"Could not verify endpoint creation: {check_error}")
-                print(f"However, the timeout error suggests the endpoint may still be created")
-                return True  # Consider this a success since timeout is expected
-        elif "model download task is currently running" in error_msg.lower():
-            retry_count += 1
-            if retry_count < max_retries:
-                print(f"⚠️  Model download task is still running for {endpoint_id} (attempt {retry_count}/{max_retries})")
-                print(f"Waiting 60 seconds before retrying...")
-                time.sleep(60)
-                continue
+                        
+                except Exception as check_error:
+                    print(f"Could not verify endpoint creation: {check_error}")
+                    print(f"However, the memory error suggests the endpoint may still be created")
+                    return True  # Consider this a success since memory errors can be transient
             else:
-                print(f"❌ Model download task is still running after {max_retries} attempts")
-                print(f"Consider waiting longer for the model to finish downloading")
-                return False
-        elif "not enough memory" in error_msg.lower():
-            print(f"⚠️  Memory allocation error for {endpoint_id} - waiting 5 seconds and checking if endpoint was created...")
-            time.sleep(5)
-            
-            # Check if the endpoint was actually created despite the memory error
-            try:
-                endpoint_check = es.inference.get(inference_id=endpoint_id)
-                print(f"✓ Endpoint '{endpoint_id}' was created successfully despite memory error")
-                print(f"Endpoint status: {json.dumps(endpoint_check.body, indent=2)}")
-                return True  # Consider this a success since endpoint was created
-                    
-            except Exception as check_error:
-                print(f"Could not verify endpoint creation: {check_error}")
-                print(f"However, the memory error suggests the endpoint may still be created")
-                return True  # Consider this a success since memory errors can be transient
-        else:
-            retry_count += 1
-            if retry_count < max_retries:
-                print(f"⚠️  Error creating inference endpoint (attempt {retry_count}/{max_retries}): {e}")
-                print(f"Waiting 30 seconds before retrying...")
-                time.sleep(30)
-                continue
-            else:
-                print(f"❌ Error creating inference endpoint after {max_retries} attempts: {e}")
-                return False
+                retry_count += 1
+                if retry_count < max_retries:
+                    print(f"⚠️  Error creating inference endpoint (attempt {retry_count}/{max_retries}): {e}")
+                    print(f"Waiting 30 seconds before retrying...")
+                    time.sleep(30)
+                    continue
+                else:
+                    print(f"❌ Error creating inference endpoint after {max_retries} attempts: {e}")
+                    return False
 
     # Verify the endpoint was created
     try:
