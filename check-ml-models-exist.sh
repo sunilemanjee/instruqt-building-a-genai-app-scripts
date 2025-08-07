@@ -57,7 +57,7 @@ es_url = "$ES_URL"
 api_key = "$API_KEY"
 models = [
     "elastic__distilbert-base-cased-finetuned-conll03-english",
-    "bhadresh-savani__distilbert-base-uncased-emotion", 
+    "bhadresh-savani__distilbert-base-uncased-emotion",
     "typeform__distilbert-base-uncased-mnli"
 ]
 
