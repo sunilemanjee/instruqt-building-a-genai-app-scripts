@@ -418,7 +418,7 @@ EOF
         if [ -f "run-ingestion.sh" ]; then
             echo "Running ingestion script with Instruqt flag..."
             chmod +x run-ingestion.sh
-            source ../env_config.sh && ./run-ingestion.sh --ingest-raw-500-dataset
+            source ../env_config.sh && ./run-ingestion.sh --instruqt-reindex-with-endpoints
             if [ $? -eq 0 ]; then
                 echo "Data ingestion completed successfully!"
             else
