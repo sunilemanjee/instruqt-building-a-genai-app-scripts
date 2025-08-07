@@ -257,8 +257,8 @@ es = Elasticsearch(
 )
 
 # Inference model IDs from environment variables
-ELSER_INFERENCE_ID = os.environ.get('ELSER_INFERENCE_ID', '.elser-2-elasticsearch')
-E5_INFERENCE_ID = os.environ.get('E5_INFERENCE_ID', '.e5-elasticsearch')
+ELSER_INFERENCE_ID = os.environ.get('ELSER_INFERENCE_ID', '.elser-2-elastic')
+E5_INFERENCE_ID = os.environ.get('E5_INFERENCE_ID', '.multilingual-e5-small-elasticsearch')
 RERANKER_INFERENCE_ID = os.environ.get('RERANK_INFERENCE_ID', '.rerank-elasticsearch')
 
 def wake_up_elser():
