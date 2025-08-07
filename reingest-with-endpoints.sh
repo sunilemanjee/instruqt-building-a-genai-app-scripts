@@ -41,13 +41,13 @@ fi
 
 # Run the reingestion script with endpoints flag
 if [ -f "run-ingestion.sh" ]; then
-    echo "Running reingestion script with --reingest-instruqt-with-endpoints flag..."
+    echo "Running reindex script with --instruqt-reindex-with-endpoints flag..."
     chmod +x run-ingestion.sh
-    source ../env_config.sh && ./run-ingestion.sh --reingest-instruqt-with-endpoints
+    source ../env_config.sh && ./run-ingestion.sh --instruqt-reindex-with-endpoints
     if [ $? -eq 0 ]; then
-        echo "Reingestion with endpoints completed successfully!"
+        echo "Reindex with endpoints completed successfully!"
     else
-        echo "Error: Reingestion with endpoints failed"
+        echo "Error: Reindex with endpoints failed"
         exit 1
     fi
 else
