@@ -101,8 +101,10 @@ try:
         sys.exit(1)
     
     body_content_elser_config = properties['body_content_elser']
-    if body_content_elser_config.get('inference_id') != 'my-elser-endpoint':
-        print(f"✗ Field 'body_content_elser' does not have inference_id: my-elser-endpoint")
+    actual_inference_id = body_content_elser_config.get('inference_id', 'not found')
+    if actual_inference_id != '.elser-2-elastic':
+        print(f"✗ Field 'body_content_elser' does not have inference_id: .elser-2-elastic")
+        print(f"  Actual inference_id: {actual_inference_id}")
         sys.exit(1)
     
     print(f"✓ Field 'body_content_elser' exists with correct inference_id")
