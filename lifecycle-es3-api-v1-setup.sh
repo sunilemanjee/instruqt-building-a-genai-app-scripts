@@ -68,11 +68,19 @@ export KIBANA_URL=`jq -r 'to_entries[0].value.endpoints.kibana' /tmp/project_res
 export ELASTICSEARCH_PASSWORD=`jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json`
 export ES_URL=`jq -r 'to_entries[0].value.endpoints.elasticsearch' /tmp/project_results.json`
 
-agent variable set ES_KIBANA_URL `jq -r 'to_entries[0].value.endpoints.kibana' /tmp/project_results.json`
-agent variable set ES_USERNAME `jq -r 'to_entries[0].value.credentials.username' /tmp/project_results.json`
-agent variable set ES_PASSWORD `jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json`
-agent variable set ES_DEPLOYMENT_ID `jq -r 'to_entries[0].value.id' /tmp/project_results.json`
-agent variable set ES_URL=`jq -r 'to_entries[0].value.endpoints.elasticsearch' /tmp/project_results.json`
+# Extract values from project results JSON
+ES_KIBANA_URL_VALUE=$(jq -r 'to_entries[0].value.endpoints.kibana' /tmp/project_results.json)
+ES_USERNAME_VALUE=$(jq -r 'to_entries[0].value.credentials.username' /tmp/project_results.json)
+ES_PASSWORD_VALUE=$(jq -r 'to_entries[0].value.credentials.password' /tmp/project_results.json)
+ES_DEPLOYMENT_ID_VALUE=$(jq -r 'to_entries[0].value.id' /tmp/project_results.json)
+ES_URL_VALUE=$(jq -r 'to_entries[0].value.endpoints.elasticsearch' /tmp/project_results.json)
+
+# Set agent variables
+agent variable set ES_KIBANA_URL "$ES_KIBANA_URL_VALUE"
+agent variable set ES_USERNAME "$ES_USERNAME_VALUE"
+agent variable set ES_PASSWORD "$ES_PASSWORD_VALUE"
+agent variable set ES_DEPLOYMENT_ID "$ES_DEPLOYMENT_ID_VALUE"
+agent variable set ES_URL "$ES_URL_VALUE"
 
 
 BASE64=$(echo -n "admin:${ELASTICSEARCH_PASSWORD}" | base64)
@@ -276,13 +284,14 @@ if not existing_encoded_api_key:
         exit(1)
 else:
     print(f"API key ID already exists in project results JSON")
-    # Store existing encoded API key in agent variable
-    import subprocess
-    subprocess.run(["agent", "variable", "set", "ES_API_KEY", encoded_api_key], check=True)
-    print(f"Existing encoded API key stored in agent variable ES_API_KEY")
+    print(f"Existing encoded API key will be read from project results JSON")
 EOF
 
 echo "API key creation completed successfully."
+
+# Set ES_API_KEY agent variable from project results JSON (consistent with other variables)
+ES_API_KEY_VALUE=$(jq -r 'to_entries[0].value.credentials.api_key' /tmp/project_results.json)
+agent variable set ES_API_KEY "$ES_API_KEY_VALUE"
 
 
 ###################
