@@ -20,7 +20,7 @@ case "$PROJECT_TYPE" in
         --project-type $PROJECT_TYPE \
         --regions $REGIONS \
         --project-name $INSTRUQT_TRACK_SLUG-$INSTRUQT_PARTICIPANT_ID-`date '+%s'` \
-        --api-key 'essu_Tlc5MlUzZzFZMEpqYkZWdllUUTBjMHRTYUZFNmFYRTFaMncxWDBoVVltRmpVVEZoY1ZCamVrVklRUT09AAAAAN38zcg=' \
+        --api-key "$ESS_CLOUD_API_KEY" \
         --wait-for-ready
         ;;
     "elasticsearch")
@@ -32,7 +32,7 @@ case "$PROJECT_TYPE" in
         --optimized-for $OPTIMIZED_FOR \
         --regions $REGIONS \
         --project-name $INSTRUQT_TRACK_SLUG-$INSTRUQT_PARTICIPANT_ID-`date '+%s'` \
-        --api-key 'essu_Tlc5MlUzZzFZMEpqYkZWdllUUTBjMHRTYUZFNmFYRTFaMncxWDBoVVltRmpVVEZoY1ZCamVrVklRUT09AAAAAN38zcg=' \
+        --api-key "$ESS_CLOUD_API_KEY" \
         --wait-for-ready
         ;;
     *)
