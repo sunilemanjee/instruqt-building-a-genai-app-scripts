@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Introduction to AI and ML in Elasticsearch</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #3498db, #2c3e50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        h2 {
+            color: #34495e;
+            margin-top: 35px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            position: relative;
+        }
+        
+        h2::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+            border-radius: 2px;
+        }
+        
+        h3 {
+            color: #2980b9;
+            margin-top: 25px;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        ul {
+            margin: 15px 0;
+            padding-left: 0;
+        }
+        
+        li {
+            margin-bottom: 12px;
+            padding: 12px 20px;
+            background: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid #3498db;
+            border-radius: 0 8px 8px 0;
+            list-style: none;
+            transition: all 0.3s ease;
+        }
+        
+        li:hover {
+            background: rgba(52, 152, 219, 0.15);
+            transform: translateX(5px);
+        }
+        
+        strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        p {
+            margin-bottom: 18px;
+            text-align: justify;
+        }
+        
+        hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+            margin: 40px 0;
+            border-radius: 2px;
+        }
+        
+        em {
+            font-style: italic;
+            color: #7f8c8d;
+            text-align: center;
+            display: block;
+            margin-top: 30px;
+            font-size: 1.1em;
+            padding: 20px;
+            background: rgba(127, 140, 141, 0.1);
+            border-radius: 10px;
+            border: 1px dashed #bdc3c7;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(46, 204, 113, 0.1), rgba(26, 188, 156, 0.1));
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #2ecc71;
+        }
+        
+        .problem-section {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(192, 57, 43, 0.1));
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #e74c3c;
+        }
+        
+        .solution-section {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.1));
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #3498db;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Introduction to AI and ML in Elasticsearch</h1>
+        
+        <h2>Objective</h2>
+        <p>This lab explains why AI and ML are essential for modern search and how Elasticsearch's built-in capabilities dramatically improve search recall and precision.</p>
+        
+        <div class="problem-section">
+            <h2>The Search Challenge</h2>
+            <p>While keyword search is powerful and remains essential, it has some gaps that AI can help fill:</p>
+            <ul>
+                <li><strong>Vocabulary mismatch</strong>: Users search "car" but documents say "automobile"</li>
+                <li><strong>Limited semantic understanding</strong>: Struggles with intent and context beyond exact matches</li>
+                <li><strong>Missed relevant content</strong>: May not surface related concepts due to keyword differences</li>
+            </ul>
+            <p><em>Note: Keyword search excels at exact matching and remains a cornerstone of modern hybrid search approaches.</em></p>
+        </div>
+        
+        <div class="solution-section">
+            <h2>How AI/ML Enhances Search</h2>
+            <ul>
+                <li><strong>Semantic Understanding</strong>: AI complements keywords by understanding meaning and context</li>
+                <li><strong>Enhanced Recall</strong>: Finds relevant content through both keyword matches and semantic similarity</li>
+                <li><strong>Hybrid Precision</strong>: Combines keyword relevance with semantic ranking for optimal results</li>
+            </ul>
+            <p><em>Best results come from combining keyword search with AI - not replacing it!</em></p>
+        </div>
+        
+        <div class="highlight-box">
+            <h2>What You'll Build</h2>
+            <p>In the upcoming labs, you'll implement these AI-powered enhancements:</p>
+            
+            <h3>ELSER Inference Endpoint</h3>
+            <p>Sparse vectors that expand queries with related terms. "Car" finds "automobile," "vehicle," "sedan."</p>
+            
+            <h3>E5 Inference Endpoint</h3>
+            <p>Dense embeddings for multilingual semantic search. Query in English, find Spanish results.</p>
+            
+            <h3>Chat Completions Endpoint</h3>
+            <p>LLM integration for conversational search and natural language responses.</p>
+            
+            <h3>Semantic Reranking Endpoint</h3>
+            <p>Re-orders results using semantic similarity for better ranking accuracy.</p>
+            
+            <h3>ML Models in Elasticsearch</h3>
+            <p>Custom models for entity recognition, classification, and domain-specific tasks.</p>
+        </div>
+        
+        <h2>Recall vs Precision</h2>
+        <ul>
+            <li><strong>Recall</strong>: Did we find all relevant results? (Comprehensiveness)</li>
+            <li><strong>Precision</strong>: Are the returned results actually relevant? (Accuracy)</li>
+        </ul>
+        <p>AI models enhance both recall and precision by understanding semantic relationships while preserving the power of exact keyword matching.</p>
+        
+        <div class="highlight-box">
+            <h2>The Goal</h2>
+            <p>Transform keyword search into intelligent, hybrid AI-powered search that combines the precision of exact matching with semantic understanding of user intent.</p>
+        </div>
+        
+        <hr>
+        
+        <em>Ready to build the future of search? Let's start with ELSER.</em>
+    </div>
+</body>
+</html>

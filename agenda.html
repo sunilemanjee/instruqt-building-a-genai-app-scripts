@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elasticsearch Workshop - Lab Agenda</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(45deg, #3498db, #2c3e50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            font-size: 1rem;
+            color: #718096;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .agenda-container {
+            margin-top: 30px;
+        }
+
+        .lab-item {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.08), rgba(155, 89, 182, 0.08));
+            border: 1px solid rgba(52, 152, 219, 0.15);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lab-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+        }
+
+        .lab-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+            border-color: rgba(52, 152, 219, 0.25);
+        }
+
+        .lab-number {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: linear-gradient(45deg, #3498db, #2c3e50);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .lab-title {
+            font-size: 1.4rem;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-weight: 600;
+            padding-right: 50px;
+        }
+
+        .lab-description {
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .lab-type {
+            display: inline-block;
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .lab-type.setup {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+        }
+
+        .lab-type.demo {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+        }
+
+        .lab-type.hands-on {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+        }
+
+        .lab-type.advanced {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        .lab-type.ai-ml {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .back-button {
+            display: inline-block;
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(149, 165, 166, 0.3);
+            text-decoration: none;
+            color: white;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2c3e50;
+            display: block;
+        }
+
+        .stat-label {
+            color: #4a5568;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .lab-item {
+                padding: 20px;
+            }
+            
+            .lab-number {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-bottom: 10px;
+                width: auto;
+                height: auto;
+                padding: 8px 12px;
+                border-radius: 15px;
+            }
+            
+            .lab-title {
+                padding-right: 0;
+            }
+            
+            .stats {
+                gap: 15px;
+            }
+            
+            .stat-item {
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar">
+        <div class="progress-fill"></div>
+    </div>
+
+    <div class="container">
+        <a href="https://sunmanapp.z19.web.core.windows.net/" class="back-button">← Back to Learning Hub</a>
+        
+        <div class="header">
+            <h1>Workshop Lab Agenda</h1>
+            <p class="subtitle">Building Search AI on Elasticsearch Serverless</p>
+            <p class="description">
+                A comprehensive hands-on journey through AI-powered search technologies, 
+                from basic setup to advanced machine learning integration.
+            </p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-number">10+</span>
+                <span class="stat-label">Labs</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">1-3</span>
+                <span class="stat-label">Hours</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">5</span>
+                <span class="stat-label">AI Models</span>
+            </div>
+        </div>
+
+        <div class="agenda-container">
+
+
+            <div class="lab-item">
+                <div class="lab-number">1</div>
+                <div class="lab-type demo">Demo</div>
+                <h3 class="lab-title">What are we building?</h3>
+                <p class="lab-description">
+                    A short demo of the complete search application you will be creating throughout this workshop, 
+                    showcasing the end-to-end AI-powered property search experience.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">2</div>
+                <div class="lab-type hands-on">Infrastructure</div>
+                <h3 class="lab-title">Serverless</h3>
+                <p class="lab-description">
+                    Explore Elasticsearch Serverless configuration-free approach where infrastructure decisions 
+                    are automatically managed and abstracted away, eliminating operational overhead.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">3</div>
+                <div class="lab-type hands-on">Data Exploration</div>
+                <h3 class="lab-title">View Properties Data</h3>
+                <p class="lab-description">
+                    Use Kibana Discover to explore and understand the structure of the properties index data 
+                    that will be used throughout the workshop exercises.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">4</div>
+                <div class="lab-type hands-on">Search Basics</div>
+                <h3 class="lab-title">Playground - Find Homes</h3>
+                <p class="lab-description">
+                    Use Elasticsearch Playground to perform basic property searches and understand 
+                    traditional keyword-based search capabilities and limitations.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">5</div>
+                <div class="lab-type ai-ml">Foundation</div>
+                <h3 class="lab-title">AI & ML Models with Elastic</h3>
+                <p class="lab-description">
+                    Understand why AI and ML are essential for modern search and how Elasticsearch's 
+                    built-in capabilities dramatically improve search recall and precision.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">6</div>
+                <div class="lab-type ai-ml">Sparse Vectors</div>
+                <h3 class="lab-title">ELSER GPU Backed Inference Endpoint</h3>
+                <p class="lab-description">
+                    Observe and test ELSER (Elastic Learned Sparse EncodeR) inference endpoint for 
+                    semantic search using sparse vector representations and query expansion.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">7</div>
+                <div class="lab-type ai-ml">Dense Vectors</div>
+                <h3 class="lab-title">E5 Vector Inference Endpoint</h3>
+                <p class="lab-description">
+                    Create and configure an E5 multilingual inference endpoint for dense vector embeddings, 
+                    enabling cross-language semantic search capabilities.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">8</div>
+                <div class="lab-type ai-ml">LLM Integration</div>
+                <h3 class="lab-title">Completions Endpoint</h3>
+                <p class="lab-description">
+                    Create and configure a Large Language Model (LLM) Chat Completion inference endpoint 
+                    for conversational search and natural language response generation.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">9</div>
+                <div class="lab-type ai-ml">Reranking</div>
+                <h3 class="lab-title">Elastic Reranker Inference Endpoint</h3>
+                <p class="lab-description">
+                    Create and configure an Elastic ReRanker inference endpoint to improve search result 
+                    ordering using semantic similarity and relevance scoring.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">10</div>
+                <div class="lab-type advanced">Custom ML</div>
+                <h3 class="lab-title">ML Models in Search</h3>
+                <p class="lab-description">
+                    Deploy and use custom machine learning models like NER, text classification, and 
+                    zero-shot classification directly within Elasticsearch using Eland and ingest pipelines.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">11</div>
+                <div class="lab-type hands-on">Semantic Fields</div>
+                <h3 class="lab-title">Properties Index - Semantic Text Fields</h3>
+                <p class="lab-description">
+                    Explore semantic text fields in the properties index and understand how they enable 
+                    automatic vectorization and semantic search capabilities.
+                </p>
+            </div>
+
+
+
+
+
+            <div class="lab-item">
+                <div class="lab-number">14</div>
+                <div class="lab-type advanced">Performance</div>
+                <h3 class="lab-title">Quantization & Recall Impact</h3>
+                <p class="lab-description">
+                    Explore the impact of vector quantization on search accuracy and recall in property 
+                    search indices, balancing performance with search quality.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">15</div>
+                <div class="lab-type advanced">Query Optimization</div>
+                <h3 class="lab-title">AI Infused Query Tuning</h3>
+                <p class="lab-description">
+                    Hands-on experience with advanced search capabilities including multi-language embeddings, 
+                    semantic reranking, reciprocal rank fusion, and AI-powered search tuning.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">16</div>
+                <div class="lab-type advanced">Relevance Engineering</div>
+                <h3 class="lab-title">Relevance Studio</h3>
+                <p class="lab-description">
+                    Introduction to search relevance engineering using Elasticsearch Relevance Studio 
+                    for systematic evaluation and improvement of search result quality.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">17</div>
+                <div class="lab-type hands-on">Modern Querying</div>
+                <h3 class="lab-title">Search with ES|QL</h3>
+                <p class="lab-description">
+                    Run semantic hotel searches with proximity-based geo filters using ES|QL, 
+                    Elasticsearch's modern query language for complex search operations.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">18</div>
+                <div class="lab-type hands-on">Business Logic</div>
+                <h3 class="lab-title">Query Rules</h3>
+                <p class="lab-description">
+                    Create query rules that automatically promote sponsored properties based on search terms, 
+                    implementing business logic directly into search results.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">19</div>
+                <div class="lab-type hands-on">Search Enhancement</div>
+                <h3 class="lab-title">Synonyms UI</h3>
+                <p class="lab-description">
+                    Learn to create and manage synonyms using Elasticsearch's user interface to improve 
+                    search recall and handle vocabulary variations in property searches.
+                </p>
+            </div>
+
+            <div class="lab-item">
+                <div class="lab-number">20</div>
+                <div class="lab-type advanced">AI Integration</div>
+                <h3 class="lab-title">MCP & Intelligent Query Layer Chatbot</h3>
+                <p class="lab-description">
+                    Build an intelligent chatbot using Model Context Protocol (MCP) and the intelligent 
+                    query layer for conversational property search and natural language interactions.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple progress indicator based on scroll position
+        window.addEventListener('scroll', () => {
+            const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollTop = window.scrollY;
+            const scrollPercent = (scrollTop / scrollHeight) * 100;
+            document.querySelector('.progress-fill').style.width = scrollPercent + '%';
+        });
+    </script>
+</body>
+</html>
