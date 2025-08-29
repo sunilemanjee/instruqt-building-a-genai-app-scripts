@@ -6,12 +6,11 @@
 # Download and run setup-quantization-ui.sh script
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
-
 # Configuration
-REPO_NAME="quantization-test-ui"
-GITHUB_REPO="sunilemanjee/quantization-test-ui"
-GITHUB_BRANCH="main"
+SCRIPT_URL="https://raw.githubusercontent.com/sunilemanjee/instruqt-building-a-genai-app-scripts/refs/heads/main/setup-quantization-ui.sh"
 TARGET_DIR="/root"
+SCRIPT_NAME="setup-quantization-ui.sh"
+SCRIPT_PATH="$TARGET_DIR/$SCRIPT_NAME"
 
 # Colors for output
 RED='\033[0;31m'
@@ -43,9 +42,6 @@ if [[ ! -w "$TARGET_DIR" ]]; then
     exit 1
 fi
 
-REPO_PATH="$TARGET_DIR/$REPO_NAME"
-BACKUP_PATH="$TARGET_DIR/${REPO_NAME}.backup.$(date +%Y%m%d_%H%M%S)"
-
 # Check network connectivity
 log "Checking network connectivity..."
 if ! curl -s --max-time 10 --connect-timeout 10 https://raw.githubusercontent.com > /dev/null; then
@@ -53,64 +49,46 @@ if ! curl -s --max-time 10 --connect-timeout 10 https://raw.githubusercontent.co
     exit 1
 fi
 
-log "Cloning $REPO_NAME repository from GitHub..."
-
-# Create backup if repository exists
-if [[ -d "$REPO_PATH" ]]; then
-    log "Creating backup of existing repository..."
-    cp -r "$REPO_PATH" "$BACKUP_PATH"
-    log "Backup created: $BACKUP_PATH"
-fi
-
-# Clone the repository
-CLONE_URL="https://github.com/$GITHUB_REPO.git"
-
-if git clone "$CLONE_URL" "$REPO_PATH"; then
-    log "Repository cloned successfully!"
+# Download the setup script
+log "Downloading setup script from $SCRIPT_URL..."
+if curl -s -o "$SCRIPT_PATH" "$SCRIPT_URL"; then
+    log "Setup script downloaded successfully!"
 else
-    error "Failed to clone repository from $CLONE_URL"
-    if [[ -d "$BACKUP_PATH" ]]; then
-        log "Restoring from backup..."
-        rm -rf "$REPO_PATH" 2>/dev/null || true
-        cp -r "$BACKUP_PATH" "$REPO_PATH"
-    fi
+    error "Failed to download setup script from $SCRIPT_URL"
     exit 1
 fi
 
-# Set executable permissions on setup script
-SETUP_SCRIPT="$REPO_PATH/setup_env.sh"
+# Set executable permissions on the downloaded script
 log "Setting executable permissions on setup script..."
-if chmod 755 "$SETUP_SCRIPT"; then
+if chmod 755 "$SCRIPT_PATH"; then
     log "Permissions set successfully!"
 else
-    error "Failed to set permissions on $SETUP_SCRIPT"
+    error "Failed to set permissions on $SCRIPT_PATH"
     exit 1
 fi
 
-# Verify the repository and setup script exist
-if [[ -d "$REPO_PATH" && -f "$SETUP_SCRIPT" && -x "$SETUP_SCRIPT" ]]; then
-    log "Repository is ready to setup!"
+# Verify the script exists and is executable
+if [[ -f "$SCRIPT_PATH" && -x "$SCRIPT_PATH" ]]; then
+    log "Setup script is ready to run!"
     
     # Basic content validation
-    if ! head -n 1 "$SETUP_SCRIPT" | grep -q "^#!/bin/bash\|^#!/bin/sh"; then
+    if ! head -n 1 "$SCRIPT_PATH" | grep -q "^#!/bin/bash\|^#!/bin/sh"; then
         warn "Setup script may not be a valid bash script"
     fi
     
-    log "Starting setup for $REPO_NAME..."
+    log "Starting setup script..."
     echo "=================================="
     
-    # Change to repository directory and run the setup script
-    cd "$REPO_PATH"
-    if ./setup_env.sh; then
+    # Run the setup script
+    if bash "$SCRIPT_PATH"; then
         echo "=================================="
-        log "Repository setup completed successfully!"
-        log "Repository location: $REPO_PATH"
-        log "You can now run the application with: cd $REPO_PATH && python run.py"
+        log "Setup script completed successfully!"
+        log "Script location: $SCRIPT_PATH"
     else
-        error "Repository setup failed with exit code $?"
+        error "Setup script failed with exit code $?"
         exit 1
     fi
 else
-    error "Repository or setup script does not exist: $REPO_PATH"
+    error "Setup script does not exist or is not executable: $SCRIPT_PATH"
     exit 1
 fi 

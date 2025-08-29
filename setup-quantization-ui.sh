@@ -151,7 +151,7 @@ mkdir -p /root/quantization-test-ui/logs
 echo "Starting quantization test UI in background..."
 
 # Run the application in background and redirect output to logs
-nohup python app.py > /root/quantization-test-ui/logs/quantization_ui.log 2>&1 &
+nohup python run.py > /root/quantization-test-ui/logs/quantization_ui.log 2>&1 &
 
 # Get the background process ID
 QUANTIZATION_UI_PID=$!
