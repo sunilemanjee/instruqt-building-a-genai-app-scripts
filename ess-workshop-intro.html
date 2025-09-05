@@ -3,170 +3,313 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>Building Search AI (MCP) on Elasticsearch Serverless - Workshop Overview</title>
+   <title>Become a 5x Developer: Build Smarter Search AI on Serverless</title>
    <style>
+       * {
+           margin: 0;
+           padding: 0;
+           box-sizing: border-box;
+       }
+
        body {
-           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-           line-height: 1.6;
-           max-width: 800px;
-           margin: 0 auto;
-           padding: 20px;
+           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+           background: #0B64DD;
+           min-height: 100vh;
            color: #333;
+           padding: 20px;
        }
+
+       .container {
+           max-width: 1000px;
+           margin: 0 auto;
+           background: #F5F7FA;
+           backdrop-filter: blur(10px);
+           border-radius: 20px;
+           padding: 40px;
+           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+       }
+
        h1 {
-           color: #2c3e50;
-           border-bottom: 3px solid #3498db;
-           padding-bottom: 10px;
+           font-size: 2.8rem;
+           background: linear-gradient(45deg, #3498db, #2c3e50);
+           -webkit-background-clip: text;
+           -webkit-text-fill-color: transparent;
+           background-clip: text;
+           margin-bottom: 25px;
+           font-weight: 700;
+           text-align: center;
        }
+
        h2 {
-           color: #27ae60;
-           margin-top: 30px;
+           color: #153385;
+           margin-top: 35px;
+           font-size: 1.8rem;
+           font-weight: 600;
+           border-bottom: 2px solid #3498db;
+           padding-bottom: 8px;
        }
+
        h3 {
-           color: #8e44ad;
+           color: #2c3e50;
            margin-top: 25px;
+           font-size: 1.3rem;
+           font-weight: 500;
        }
+
        ul {
            padding-left: 20px;
        }
+
        li {
-           margin-bottom: 8px;
+           margin-bottom: 12px;
+           color: #4a5568;
+           line-height: 1.6;
        }
+
        strong {
            color: #2c3e50;
+           font-weight: 600;
        }
+
        .highlight {
-           background-color: #f8f9fa;
-           padding: 15px;
+           background: #DCE2EA;
+           padding: 25px;
            border-left: 4px solid #3498db;
-           margin: 15px 0;
+           margin: 25px 0;
+           border-radius: 12px;
+           border: 1px solid rgba(52, 152, 219, 0.15);
        }
+
        .section {
+           margin-bottom: 35px;
+           padding: 25px;
+           background: #DCE2EA;
+           border-radius: 12px;
+           border: 1px solid rgba(52, 152, 219, 0.15);
+           position: relative;
+           overflow: hidden;
+       }
+
+       .section::before {
+           content: '';
+           position: absolute;
+           top: 0;
+           left: 0;
+           width: 4px;
+           height: 100%;
+           background: linear-gradient(45deg, #3498db, #9b59b6);
+       }
+
+       .section:hover {
+           background: #E8EDF4;
+           border-color: rgba(52, 152, 219, 0.25);
+           transform: translateY(-3px);
+           transition: all 0.3s ease;
+           box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+       }
+
+       .badge {
+           display: inline-block;
+           background: linear-gradient(45deg, #27ae60, #2ecc71);
+           color: white;
+           padding: 6px 15px;
+           border-radius: 20px;
+           font-size: 0.9rem;
+           font-weight: 600;
+           margin-bottom: 20px;
+           text-transform: uppercase;
+           letter-spacing: 0.5px;
+       }
+
+       .footer {
+           text-align: center;
+           margin-top: 40px;
+           padding-top: 25px;
+           border-top: 1px solid rgba(52, 152, 219, 0.2);
+           color: #718096;
+       }
+
+       .subtitle {
+           font-size: 1.2rem;
+           color: #4a5568;
+           margin-bottom: 15px;
+           text-align: center;
+       }
+
+       .description {
+           font-size: 1rem;
+           color: #718096;
+           max-width: 700px;
+           margin: 0 auto 30px auto;
+           line-height: 1.6;
+           text-align: center;
+       }
+
+       .back-button {
+           display: inline-block;
+           background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+           color: white;
+           padding: 10px 20px;
+           text-decoration: none;
+           border-radius: 20px;
+           font-weight: 600;
+           transition: all 0.3s ease;
            margin-bottom: 30px;
+           font-size: 0.9rem;
+       }
+
+       .back-button:hover {
+           transform: translateY(-2px);
+           box-shadow: 0 8px 20px rgba(149, 165, 166, 0.3);
+           text-decoration: none;
+           color: white;
+       }
+
+       @media (max-width: 768px) {
+           .container {
+               padding: 20px;
+               margin: 10px;
+           }
+           
+           h1 {
+               font-size: 2rem;
+           }
+           
+           .section {
+               padding: 15px;
+           }
        }
    </style>
 </head>
 <body>
-   <h1>Building Search AI (MCP) on Elasticsearch Serverless - Workshop Overview</h1>
+          <div class="container">
+           <a href="index.html" class="back-button">← Back to Learning Hub</a>
+           
+           <h1>Become a 5x Developer: Build Smarter Search AI on Serverless</h1>
+           <p class="subtitle">Transform your search applications with AI-powered intelligence</p>
+           <p class="description">This hands-on workshop teaches you how to build intelligent search systems using Elasticsearch Serverless, vector search, and AI models. Learn to deploy inference endpoints, implement semantic search, and create conversational interfaces that understand user intent.</p>
 
-   <div class="highlight">
-       <p><strong>Transform your search applications with AI-powered intelligence.</strong> This hands-on workshop teaches you how to build intelligent search systems using Elasticsearch Serverless, vector search, and AI models. Learn to deploy inference endpoints, implement semantic search, and create conversational interfaces that understand user intent. No prior AI experience required - just bring your curiosity and get ready to build the future of search.</p>
-   </div>
+                  <div class="highlight">
+               <p><strong>No prior AI experience required</strong> - just bring your curiosity and get ready to build the future of search. This workshop transforms traditional search engineers into AI-powered search architects, providing the skills needed to build the next generation of intelligent search applications.</p>
+           </div>
 
-   <div class="section">
-       <h2>Who Is This Workshop For?</h2>
-       
-       <h3>Primary Audience:</h3>
-       <ul>
-           <li><strong>Search Engineers</strong> building intelligent search applications</li>
-           <li><strong>Solutions Architects</strong> designing AI-powered search systems</li>
-           <li><strong>Backend Developers</strong> implementing semantic search capabilities</li>
-           <li><strong>Data Engineers</strong> working with vector databases and embeddings</li>
-           <li><strong>DevOps Engineers</strong> deploying serverless search infrastructure</li>
-       </ul>
+       <div class="section">
+           <h2>Who Is This Workshop For?</h2>
+           
+           <h3>Primary Audience:</h3>
+           <ul>
+               <li><strong>Search Engineers</strong> building intelligent search applications</li>
+               <li><strong>Solutions Architects</strong> designing AI-powered search systems</li>
+               <li><strong>Backend Developers</strong> implementing semantic search capabilities</li>
+               <li><strong>Data Engineers</strong> working with vector databases and embeddings</li>
+               <li><strong>DevOps Engineers</strong> deploying serverless search infrastructure</li>
+           </ul>
 
-       <h3>Technical Background:</h3>
-       <ul>
-           <li>Basic Elasticsearch knowledge helpful but not required</li>
-           <li>Familiarity with APIs and JSON preferred</li>
-           <li>No prior AI/ML experience necessary</li>
-           <li>Suitable for intermediate to advanced technical professionals</li>
-       </ul>
-   </div>
+           <h3>Technical Background:</h3>
+           <ul>
+               <li>Basic Elasticsearch knowledge helpful but not required</li>
+               <li>Familiarity with APIs and JSON preferred</li>
+               <li>No prior AI/ML experience necessary</li>
+               <li>Suitable for intermediate to advanced technical professionals</li>
+           </ul>
+       </div>
 
-   <div class="section">
-       <h2>What You'll Learn</h2>
+       <div class="section">
+           <h2>Prerequisites</h2>
 
-       <h3>Core Technologies</h3>
-       <ul>
-           <li><strong>Elasticsearch Serverless</strong> - Configuration-free, auto-scaling search infrastructure</li>
-           <li><strong>Vector Search</strong> - Semantic similarity using dense and sparse embeddings</li>
-           <li><strong>AI Model Integration</strong> - ELSER, E5 multilingual, and custom ML models</li>
-           <li><strong>Model Context Protocol (MCP)</strong> - Intelligent query processing layer</li>
-           <li><strong>Semantic Reranking</strong> - AI-powered result optimization</li>
-       </ul>
+           <h3>Technical Requirements:</h3>
+           <ul>
+               <li>Basic understanding of REST APIs</li>
+               <li>Familiarity with JSON structure</li>
+               <li>Command line comfort helpful but not essential</li>
+           </ul>
 
-       <h3>Practical Skills</h3>
-       <ul>
-           <li>Deploy inference endpoints for multiple AI models</li>
-           <li>Build multilingual semantic search applications</li>
-           <li>Implement vector quantization for performance optimization</li>
-           <li>Create intelligent chatbots with grounded responses</li>
-           <li>Use ES|QL for modern query development</li>
-           <li>Optimize search relevance with AI-powered tuning</li>
-       </ul>
+           <h3>No Installation Required:</h3>
+           <ul>
+               <li>Fully managed lab environment</li>
+               <li>Pre-configured Elasticsearch Serverless cluster</li>
+               <li>All AI models and data pre-loaded</li>
+               <li>Focus on learning, not setup</li>
+           </ul>
+       </div>
 
-       <h3>Advanced Features</h3>
-       <ul>
-           <li>Automatic text chunking and vectorization</li>
-           <li>Cross-language search capabilities</li>
-           <li>Real-time query intelligence with MCP</li>
-           <li>Serverless auto-scaling and performance optimization</li>
-           <li>Production-ready search applications</li>
-       </ul>
-   </div>
+       <div class="section">
+           <h2>Workshop Format</h2>
 
-   <div class="section">
-       <h2>Why Take This Workshop?</h2>
+           <h3>Hands-On Learning:</h3>
+           <ul>
+               <li>12+ interactive labs with real property search data</li>
+               <li>Progressive complexity from basic concepts to advanced AI integration</li>
+               <li>Live demos and guided walkthroughs</li>
+               <li>Practical exercises you can apply immediately</li>
+           </ul>
+       </div>
 
-       <h3>Level Up Your Search Skills</h3>
-       <ul>
-           <li><strong>AI-First Search</strong> is becoming the industry standard</li>
-           <li><strong>Serverless architecture</strong> eliminates infrastructure complexity</li>
-           <li><strong>Hybrid search</strong> seamlessly combines keyword and semantic search to overcome traditional limitations</li>
-           <li><strong>Vector databases</strong> are essential for modern applications</li>
-       </ul>
+       <div class="section">
+           <h2>What You'll Learn</h2>
 
-       <h3>Business Impact</h3>
-       <ul>
-           <li><strong>Improve search precision</strong> by understanding user intent</li>
-           <li><strong>Reduce infrastructure costs</strong> with serverless auto-scaling</li>
-           <li><strong>Enable multilingual experiences</strong> without additional complexity</li>
-           <li><strong>Build conversational interfaces</strong> that users expect today</li>
-       </ul>
+           <h3>Core Technologies</h3>
+           <ul>
+               <li><strong>Elasticsearch Serverless</strong> - Configuration-free, auto-scaling search infrastructure</li>
+               <li><strong>Vector Search</strong> - Semantic similarity using dense and sparse embeddings</li>
+               <li><strong>AI Model Integration</strong> - ELSER, E5 multilingual, and custom ML models</li>
+               <li><strong>Model Context Protocol (MCP)</strong> - Intelligent query processing layer</li>
+               <li><strong>Semantic Reranking</strong> - AI-powered result optimization</li>
+           </ul>
 
-       <h3>Technical Advantages</h3>
-       <ul>
-           <li><strong>Configuration-free deployment</strong> - focus on applications, not infrastructure</li>
-           <li><strong>Built-in AI models</strong> - no external dependencies or complex integrations</li>
-           <li><strong>Automatic optimization</strong> - performance tuning handled by the platform</li>
-           <li><strong>Modern query language</strong> - ES|QL simplifies complex search operations</li>
-       </ul>
-   </div>
+           <h3>Practical Skills</h3>
+           <ul>
+               <li>Deploy inference endpoints for multiple AI models</li>
+               <li>Build multilingual semantic search applications</li>
+               <li>Implement vector quantization for performance optimization</li>
+               <li>Create intelligent chatbots with grounded responses</li>
+               <li>Use ES|QL for modern query development</li>
+               <li>Optimize search relevance with AI-powered tuning</li>
+           </ul>
 
-   <div class="section">
-       <h2>Workshop Format</h2>
+           <h3>Advanced Features</h3>
+           <ul>
+               <li>Automatic text chunking and vectorization</li>
+               <li>Cross-language search capabilities</li>
+               <li>Real-time query intelligence with MCP</li>
+               <li>Serverless auto-scaling and performance optimization</li>
+               <li>Production-ready search applications</li>
+           </ul>
+       </div>
 
-       <h3>Hands-On Learning:</h3>
-       <ul>
-           <li>12+ interactive labs with real property search data</li>
-           <li>Progressive complexity from basic concepts to advanced AI integration</li>
-           <li>Live demos and guided walkthroughs</li>
-           <li>Practical exercises you can apply immediately</li>
-       </ul>
-   </div>
+       <div class="section">
+           <h2>Why Take This Workshop?</h2>
 
-   <div class="section">
-       <h2>Prerequisites</h2>
+           <h3>Level Up Your Search Skills</h3>
+           <ul>
+               <li><strong>AI-First Search</strong> is becoming the industry standard</li>
+               <li><strong>Serverless architecture</strong> eliminates infrastructure complexity</li>
+               <li><strong>Hybrid search</strong> seamlessly combines keyword and semantic search to overcome traditional limitations</li>
+               <li><strong>Vector databases</strong> are essential for modern applications</li>
+           </ul>
 
-       <h3>Technical Requirements:</h3>
-       <ul>
-           <li>Basic understanding of REST APIs</li>
-           <li>Familiarity with JSON structure</li>
-           <li>Command line comfort helpful but not essential</li>
-       </ul>
+           <h3>Business Impact</h3>
+           <ul>
+               <li><strong>Improve search precision</strong> by understanding user intent</li>
+               <li><strong>Reduce infrastructure costs</strong> with serverless auto-scaling</li>
+               <li><strong>Enable multilingual experiences</strong> without additional complexity</li>
+               <li><strong>Build conversational interfaces</strong> that users expect today</li>
+           </ul>
 
-       <h3>No Installation Required:</h3>
-       <ul>
-           <li>Fully managed lab environment</li>
-           <li>Pre-configured Elasticsearch Serverless cluster</li>
-           <li>All AI models and data pre-loaded</li>
-           <li>Focus on learning, not setup</li>
-       </ul>
-   </div>
+           <h3>Technical Advantages</h3>
+           <ul>
+               <li><strong>Configuration-free deployment</strong> - focus on applications, not infrastructure</li>
+               <li><strong>Built-in AI models</strong> - no external dependencies or complex integrations</li>
+               <li><strong>Automatic optimization</strong> - performance tuning handled by the platform</li>
+               <li><strong>Modern query language</strong> - ES|QL simplifies complex search operations</li>
+           </ul>
+       </div>
 
-   <div class="highlight">
-       <p><strong>This workshop transforms traditional search engineers into AI-powered search architects, providing the skills needed to build the next generation of intelligent search applications.</strong></p>
+       <div class="highlight">
+           <p><strong>This workshop transforms traditional search engineers into AI-powered search architects, providing the skills needed to build the next generation of intelligent search applications.</strong></p>
+       </div>
+
+
    </div>
 </body>
 </html>

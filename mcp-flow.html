@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shooting Star Flow Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            color: white;
+            overflow-x: auto;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .flow-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            margin: 50px auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        .flow-grid {
+            position: relative;
+            width: 800px;
+            height: 500px;
+        }
+
+        .box {
+            position: absolute;
+            width: 180px;
+            height: 100px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 13px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: all 0.4s ease;
+            z-index: 5;
+        }
+
+        .box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+        }
+
+        /* Box positions - centered layout */
+        .user-box {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a52);
+            top: 50px;
+            left: 50px;
+        }
+
+        .mcp-box {
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            top: 50px;
+            left: 310px;
+        }
+
+        .templates-box {
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+            top: 50px;
+            left: 570px;
+        }
+
+        .feature-extract-box {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            top: 200px;
+            left: 310px;
+        }
+
+        .geocode-box {
+            background: linear-gradient(145deg, #16a085, #1abc9c);
+            top: 200px;
+            left: 570px;
+        }
+
+        .elasticsearch-box {
+            background: linear-gradient(145deg, #e67e22, #d35400);
+            top: 350px;
+            left: 310px;
+        }
+
+        .icon {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 10px;
+            opacity: 0.9;
+            margin-top: 3px;
+        }
+
+        /* Shooting star arrow */
+        .shooting-star {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #ffff00, #ff6b6b);
+            border-radius: 50%;
+            opacity: 0;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.8);
+        }
+
+        .shooting-star::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 0, 0.8), rgba(255, 107, 107, 0.6), rgba(78, 205, 196, 0.4));
+            border-radius: 2px;
+            transform: translateY(-50%);
+            transition: width 0.2s ease;
+        }
+
+        .shooting-star.active::before {
+            width: 60px;
+        }
+
+        /* Star trail effect */
+        .star-trail {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .trail-particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #ffff00;
+            border-radius: 50%;
+            opacity: 0;
+            animation: trailFade 1s ease-out forwards;
+        }
+
+        @keyframes trailFade {
+            0% { opacity: 0.8; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.3); }
+        }
+
+        /* Pulsing effect for active box */
+        .box-active {
+            animation: boxPulse 2s ease-in-out infinite;
+            border-color: #ffff00 !important;
+            box-shadow: 0 0 30px rgba(255, 255, 0, 0.6) !important;
+        }
+
+        @keyframes boxPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        /* Status panel */
+        .status-panel {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .current-action {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .step-info {
+            background: rgba(52, 152, 219, 0.3);
+            border-radius: 25px;
+            padding: 8px 20px;
+            display: inline-block;
+            margin-bottom: 15px;
+            border: 1px solid rgba(52, 152, 219, 0.5);
+        }
+
+        /* Controls */
+        .controls {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        button {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 0 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+        }
+
+        .btn-location {
+            background: linear-gradient(145deg, #16a085, #1abc9c);
+        }
+
+        .btn-reset {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+        }
+
+        .btn-auto {
+            background: linear-gradient(145deg, #f39c12, #e67e22);
+        }
+
+        /* Location indicator */
+        .location-indicator {
+            position: absolute;
+            top: 140px;
+            left: 400px;
+            background: rgba(241, 196, 15, 0.9);
+            color: #2c3e50;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            opacity: 0;
+            transition: all 0.5s ease;
+            z-index: 6;
+        }
+
+        .location-indicator.show {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="flow-container">
+            <div class="flow-grid">
+                <!-- Boxes -->
+                <div class="box user-box" id="user">
+                    <div class="icon">👤</div>
+                    <div>User</div>
+                    <div class="subtitle">Submit Query</div>
+                </div>
+
+                <div class="box mcp-box" id="mcp">
+                    <div class="icon">⚙️</div>
+                    <div>MCP Server</div>
+                    <div class="subtitle">Query Handler</div>
+                </div>
+
+                <div class="box templates-box" id="templates">
+                    <div class="icon">📄</div>
+                    <div>Get Search<br>Templates</div>
+                    <div class="subtitle">Template Retrieval</div>
+                </div>
+
+                <div class="box feature-extract-box" id="featureextract">
+                    <div class="icon">🔧</div>
+                    <div>Feature<br>Extract</div>
+                    <div class="subtitle">Attribute Matching</div>
+                </div>
+
+                <div class="box geocode-box" id="geocode">
+                    <div class="icon">📍</div>
+                    <div>Geocode<br>Location</div>
+                    <div class="subtitle">Location Processing</div>
+                </div>
+
+                <div class="box elasticsearch-box" id="elasticsearch">
+                    <div class="icon">📊</div>
+                    <div>Elasticsearch</div>
+                    <div class="subtitle">Search Execution</div>
+                </div>
+
+                <!-- Shooting stars -->
+                <div class="shooting-star" id="star"></div>
+                
+                <!-- Trail container -->
+                <div class="star-trail" id="trail"></div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <div class="step-info" id="stepInfo">Ready to Launch</div>
+            <div class="current-action" id="currentAction">MCP Property Search System Ready</div>
+            <div id="statusDetail">Click a button to see the shooting star flow in action!</div>
+        </div>
+
+        <div class="controls">
+            <button onclick="startPropertySearchFlow()">🚀 Start Property Search</button>
+            <button onclick="resetFlow()" class="btn-reset">🔄 Reset</button>
+            <button onclick="toggleAutoMode()" class="btn-auto">⚡ Auto Mode</button>
+        </div>
+    </div>
+
+    <script>
+        let isFlowing = false;
+        let autoMode = false;
+        let autoInterval;
+
+        // Flow definition - only location flow needed
+        const propertySearchFlow = [
+            { from: 'user', to: 'mcp', action: 'User submits property search query', detail: 'Query: "Find 3BR homes near San Francisco under $500k"' },
+            { from: 'mcp', to: 'templates', action: 'MCP gets search templates', detail: 'Retrieving available search templates' },
+            { from: 'templates', to: 'mcp', action: 'Templates retrieved', detail: 'Search template for home properties found' },
+            { from: 'mcp', to: 'featureextract', action: 'MCP calls feature extract', detail: 'Analyzing user query attributes against template schema' },
+            { from: 'featureextract', to: 'mcp', action: 'Features extracted successfully', detail: 'Detected: Location="San Francisco", Bedrooms=3, Price="under $500k"' },
+            { from: 'mcp', to: 'geocode', action: 'MCP calls geocode location', detail: 'Location attribute detected, calling geocode service' },
+            { from: 'geocode', to: 'mcp', action: 'Location geocoded successfully', detail: 'Returned coordinates: [37.7749, -122.4194]' },
+            { from: 'mcp', to: 'elasticsearch', action: 'MCP calls Elasticsearch with attributes', detail: 'Using: geo_point=[37.7749,-122.4194], bedrooms=3, max_price=500000' },
+            { from: 'elasticsearch', to: 'mcp', action: 'Search results returned', detail: 'Found 47 matching properties near San Francisco' },
+            { from: 'mcp', to: 'user', action: 'Results delivered to user', detail: '3BR homes under $500k near San Francisco ready' }
+        ];
+
+        function getBoxCenter(boxId) {
+            const box = document.getElementById(boxId);
+            if (!box) {
+                return { x: 0, y: 0 };
+            }
+            
+            const rect = box.getBoundingClientRect();
+            const containerRect = document.querySelector('.flow-container').getBoundingClientRect();
+            
+            return {
+                x: box.offsetLeft + box.offsetWidth / 2,
+                y: box.offsetTop + box.offsetHeight / 2
+            };
+        }
+
+        function createTrailParticle(x, y) {
+            const particle = document.createElement('div');
+            particle.className = 'trail-particle';
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            document.getElementById('trail').appendChild(particle);
+            
+            setTimeout(() => {
+                particle.remove();
+            }, 1000);
+        }
+
+        function shootingStar(fromBox, toBox, duration = 1500) {
+            return new Promise((resolve) => {
+                const star = document.getElementById('star');
+                const fromPos = getBoxCenter(fromBox);
+                const toPos = getBoxCenter(toBox);
+                
+                // Calculate angle and direction
+                const deltaX = toPos.x - fromPos.x;
+                const deltaY = toPos.y - fromPos.y;
+                const angle = Math.atan2(deltaY, deltaX);
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                // Position star at start
+                star.style.left = fromPos.x + 'px';
+                star.style.top = fromPos.y + 'px';
+                star.style.opacity = '1';
+                star.classList.add('active');
+                
+                // Rotate the star's tail to point in direction of travel
+                star.style.transform = `rotate(${angle}rad)`;
+                
+                // Animate directly to target using CSS transition
+                star.style.transition = `all ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+                
+                // Create trail particles along the path
+                const steps = Math.floor(distance / 15);
+                for (let i = 0; i < steps; i++) {
+                    setTimeout(() => {
+                        const progress = i / steps;
+                        const currentX = fromPos.x + (deltaX * progress);
+                        const currentY = fromPos.y + (deltaY * progress);
+                        createTrailParticle(currentX, currentY);
+                    }, (duration / steps) * i);
+                }
+                
+                // Move star to target
+                requestAnimationFrame(() => {
+                    star.style.left = toPos.x + 'px';
+                    star.style.top = toPos.y + 'px';
+                });
+                
+                setTimeout(() => {
+                    star.style.opacity = '0';
+                    star.classList.remove('active');
+                    star.style.transition = 'none';
+                    star.style.transform = 'rotate(0deg)';
+                    resolve();
+                }, duration);
+            });
+        }
+
+        function highlightBox(boxId, active = true) {
+            document.querySelectorAll('.box').forEach(box => {
+                box.classList.remove('box-active');
+            });
+            
+            if (active && boxId) {
+                document.getElementById(boxId).classList.add('box-active');
+            }
+        }
+
+        function updateStatus(step, stepNum, total) {
+            document.getElementById('stepInfo').textContent = `Step ${stepNum} of ${total}`;
+            document.getElementById('currentAction').textContent = step.action;
+            document.getElementById('statusDetail').textContent = step.detail;
+        }
+
+        async function executeFlow(flowSteps) {
+            isFlowing = true;
+            
+            for (let i = 0; i < flowSteps.length; i++) {
+                const step = flowSteps[i];
+                
+                // Highlight source box
+                highlightBox(step.from);
+                updateStatus(step, i + 1, flowSteps.length);
+                
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                // Shoot star to destination box
+                await shootingStar(step.from, step.to);
+                
+                // Highlight destination box
+                highlightBox(step.to);
+                
+                await new Promise(resolve => setTimeout(resolve, 700));
+            }
+            
+            highlightBox(null, false);
+            
+            updateStatus({
+                action: 'Flow Complete! ⭐',
+                detail: 'All systems executed successfully'
+            }, flowSteps.length, flowSteps.length);
+            
+            isFlowing = false;
+        }
+
+        async function startPropertySearchFlow() {
+            if (isFlowing) return;
+            await executeFlow(propertySearchFlow);
+        }
+
+        async function startBasicFlow() {
+            if (isFlowing) return;
+            await executeFlow(basicFlow, false);
+        }
+
+        async function startLocationFlow() {
+            if (isFlowing) return;
+            console.log("Starting location flow with", locationFlow.length, "steps");
+            console.log("Location flow steps:", locationFlow);
+            await executeFlow(locationFlow, true);
+        }
+
+        function resetFlow() {
+            isFlowing = false;
+            highlightBox(null, false);
+            document.getElementById('locationIndicator').classList.remove('show');
+            document.getElementById('star').style.opacity = '0';
+            document.getElementById('trail').innerHTML = '';
+            
+            updateStatus({
+                action: 'MCP Property Search System Ready',
+                detail: 'Click a button to see the shooting star flow in action!'
+            }, 0, 0);
+            
+            document.getElementById('stepInfo').textContent = 'Ready to Launch';
+        }
+
+        function toggleAutoMode() {
+            autoMode = !autoMode;
+            const button = event.target;
+            
+            if (autoMode) {
+                button.textContent = '⏸️ Stop Auto';
+                button.style.background = 'linear-gradient(145deg, #e74c3c, #c0392b)';
+                
+                autoInterval = setInterval(() => {
+                    if (!isFlowing) {
+                        Math.random() > 0.4 ? startLocationFlow() : startBasicFlow();
+                    }
+                }, 10000);
+            } else {
+                button.textContent = '⚡ Auto Mode';
+                button.style.background = 'linear-gradient(145deg, #f39c12, #e67e22)';
+                clearInterval(autoInterval);
+            }
+        }
+
+        // Auto-start demo
+        setTimeout(() => {
+            startBasicFlow();
+        }, 2000);
+    </script>
+</body>
+</html>
