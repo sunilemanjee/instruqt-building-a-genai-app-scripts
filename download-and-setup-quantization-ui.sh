@@ -12,6 +12,11 @@ TARGET_DIR="/root"
 SCRIPT_NAME="setup-quantization-ui.sh"
 SCRIPT_PATH="$TARGET_DIR/$SCRIPT_NAME"
 
+# Quantization configuration
+QUANTIZATION_SCRIPTS=("create_indices_and_reindex.sh")
+QUANTIZATION_FILES=("index-mapping-int4flat.json" "index-mapping-int8flat.json" "index-mapping-bbqflat.json")
+QUANTIZATION_DIR="${TARGET_DIR}/quantization-indices"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,6 +53,81 @@ if ! curl -s --max-time 10 --connect-timeout 10 https://raw.githubusercontent.co
     error "No internet connectivity. Please check your network connection."
     exit 1
 fi
+
+# Create quantization directory if it doesn't exist
+log "Setting up quantization directory..."
+if [ ! -d "$QUANTIZATION_DIR" ]; then
+    log "Creating quantization directory: $QUANTIZATION_DIR"
+    if mkdir -p "$QUANTIZATION_DIR"; then
+        log "Successfully created quantization directory"
+    else
+        error "Failed to create quantization directory $QUANTIZATION_DIR"
+        exit 1
+    fi
+fi
+
+if [ ! -w "$QUANTIZATION_DIR" ]; then
+    error "Quantization directory $QUANTIZATION_DIR is not writable"
+    exit 1
+fi
+
+# Download quantization scripts
+log "Downloading quantization scripts..."
+for SCRIPT_NAME in "${QUANTIZATION_SCRIPTS[@]}"; do
+    GITHUB_URL="https://raw.githubusercontent.com/sunilemanjee/instruqt-building-a-genai-app-scripts/refs/heads/main/${SCRIPT_NAME}"
+    TARGET_PATH="${QUANTIZATION_DIR}/${SCRIPT_NAME}"
+    
+    log "Processing quantization script: ${SCRIPT_NAME}"
+    
+    # Check if file already exists and inform user it will be overwritten
+    if [ -f "$TARGET_PATH" ]; then
+        warn "File $TARGET_PATH already exists - it will be overwritten"
+    fi
+
+    # Download the script using curl with error handling
+    if curl -f -L -o "$TARGET_PATH" "$GITHUB_URL"; then
+        log "Successfully downloaded ${SCRIPT_NAME} to $QUANTIZATION_DIR/"
+        
+        # Make the script executable
+        if chmod 755 "$TARGET_PATH"; then
+            log "Successfully set executable permissions (755) on $TARGET_PATH"
+        else
+            error "Failed to set executable permissions on $TARGET_PATH"
+            exit 1
+        fi
+    else
+        error "Failed to download ${SCRIPT_NAME} from GitHub"
+        error "Please check your internet connection and try again"
+        error "URL attempted: $GITHUB_URL"
+        exit 1
+    fi
+done
+
+# Download quantization mapping files
+log "Downloading quantization mapping files..."
+for FILE_NAME in "${QUANTIZATION_FILES[@]}"; do
+    GITHUB_URL="https://raw.githubusercontent.com/sunilemanjee/instruqt-building-a-genai-app-scripts/refs/heads/main/${FILE_NAME}"
+    TARGET_PATH="${QUANTIZATION_DIR}/${FILE_NAME}"
+    
+    log "Processing quantization file: ${FILE_NAME}"
+    
+    # Check if file already exists and inform user it will be overwritten
+    if [ -f "$TARGET_PATH" ]; then
+        warn "File $TARGET_PATH already exists - it will be overwritten"
+    fi
+
+    # Download the file using curl with error handling
+    if curl -f -L -o "$TARGET_PATH" "$GITHUB_URL"; then
+        log "Successfully downloaded ${FILE_NAME} to $QUANTIZATION_DIR/"
+    else
+        error "Failed to download ${FILE_NAME} from GitHub"
+        error "Please check your internet connection and try again"
+        error "URL attempted: $GITHUB_URL"
+        exit 1
+    fi
+done
+
+log "Quantization setup completed successfully!"
 
 # Download the setup script
 log "Downloading setup script from $SCRIPT_URL..."
