@@ -308,24 +308,78 @@ E5_INFERENCE_ID = os.environ.get('E5_INFERENCE_ID', '.multilingual-e5-small-elas
 RERANKER_INFERENCE_ID = os.environ.get('RERANK_INFERENCE_ID', '.rerank-elasticsearch')
 
 def wake_up_elser():
-    """Wake up ELSER model"""
+    """Wake up ELSER model with retry logic"""
     logger.info(f"Waking up ELSER model: {ELSER_INFERENCE_ID}")
-    elser_response = es.inference.inference(
-        inference_id=ELSER_INFERENCE_ID,
-        input=['vector are so much fun']
-    )
-    logger.info("ELSER model woken up successfully")
-    return elser_response
+    
+    max_retries = 30
+    retry_delay = 10
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Attempt {attempt + 1}/{max_retries} to wake up ELSER model...")
+            elser_response = es.inference.inference(
+                inference_id=ELSER_INFERENCE_ID,
+                input=['vector are so much fun'],
+                timeout="60s"
+            )
+            logger.info("ELSER model woken up successfully")
+            return elser_response
+                    
+        except Exception as e:
+            error_msg = str(e)
+            logger.info(f"Attempt {attempt + 1} failed: {error_msg}")
+            
+            # Check if it's a model deployment timeout or not ready error
+            if ("408" in error_msg or "model_deployment_timeout_exception" in error_msg or 
+                "503" in error_msg or "500" in error_msg or "model" in error_msg.lower() or 
+                "not ready" in error_msg.lower() or "timeout" in error_msg.lower() or 
+                "deployment" in error_msg.lower()):
+                if attempt < max_retries - 1:
+                    logger.info(f"Model still deploying, retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.error("Max retries reached for ELSER wake-up - model deployment failed")
+                    raise Exception(f"ELSER model failed to deploy after {max_retries} attempts: {error_msg}")
+            else:
+                logger.error(f"Unexpected error during ELSER wake-up: {e}")
+                raise Exception(f"Unexpected error during ELSER wake-up: {error_msg}")
 
 def wake_up_e5():
-    """Wake up E5 model"""
+    """Wake up E5 model with retry logic"""
     logger.info(f"Waking up E5 model: {E5_INFERENCE_ID}")
-    e5_response = es.inference.inference(
-        inference_id=E5_INFERENCE_ID,
-        input=['vector are so much fun']
-    )
-    logger.info("E5 model woken up successfully")
-    return e5_response
+    
+    max_retries = 30
+    retry_delay = 10
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Attempt {attempt + 1}/{max_retries} to wake up E5 model...")
+            e5_response = es.inference.inference(
+                inference_id=E5_INFERENCE_ID,
+                input=['vector are so much fun'],
+                timeout="60s"
+            )
+            logger.info("E5 model woken up successfully")
+            return e5_response
+                    
+        except Exception as e:
+            error_msg = str(e)
+            logger.info(f"Attempt {attempt + 1} failed: {error_msg}")
+            
+            # Check if it's a model deployment timeout or not ready error
+            if ("408" in error_msg or "model_deployment_timeout_exception" in error_msg or 
+                "503" in error_msg or "500" in error_msg or "model" in error_msg.lower() or 
+                "not ready" in error_msg.lower() or "timeout" in error_msg.lower() or 
+                "deployment" in error_msg.lower()):
+                if attempt < max_retries - 1:
+                    logger.info(f"Model still deploying, retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.error("Max retries reached for E5 wake-up - model deployment failed")
+                    raise Exception(f"E5 model failed to deploy after {max_retries} attempts: {error_msg}")
+            else:
+                logger.error(f"Unexpected error during E5 wake-up: {e}")
+                raise Exception(f"Unexpected error during E5 wake-up: {error_msg}")
 
 
 def wake_up_reranker():
@@ -414,7 +468,9 @@ EOF
     if [ $? -eq 0 ]; then
         echo "Inference models woken up successfully!"
     else
-        echo "Warning: Failed to wake up inference models"
+        echo "Error: Failed to wake up inference models - cannot proceed with indexing"
+        echo "The models need to be fully deployed before indexing can begin"
+        exit 1
     fi
     
 # Data ingestion section
