@@ -432,4 +432,16 @@ fi
 
 
 
+# Download and run setup-workshop-assets.sh
+echo "Downloading and running setup-workshop-assets.sh..."
+
+# Download the script
+curl -s -o /tmp/setup-workshop-assets.sh https://raw.githubusercontent.com/sunilemanjee/instruqt-building-a-genai-app-scripts/refs/heads/main/setup-workshop-assets.sh
+
+# Make it executable
+chmod +x /tmp/setup-workshop-assets.sh
+
+# Run the script
+/tmp/setup-workshop-assets.sh
+
 echo "done"
