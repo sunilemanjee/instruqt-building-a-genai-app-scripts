@@ -1149,4 +1149,136 @@ else
     echo "Warning: Specialized indices creation and reindexing failed"
 fi
 
-echo "Setup complete! Inference models have been woken up, properties data has been ingested, and specialized indices have been created successfully."
+# Download and create search template
+echo "Downloading and creating search template..."
+
+# Download the search template from GitHub
+echo "Downloading search template from GitHub..."
+curl -s "https://raw.githubusercontent.com/sunilemanjee/instruqt-building-a-genai-app-scripts/refs/heads/main/data/mapping/search-template.mustache" -o /tmp/search-template.mustache
+
+if [ $? -eq 0 ]; then
+    echo "Search template downloaded successfully to /tmp/search-template.mustache"
+else
+    echo "Error: Failed to download search template from GitHub"
+    exit 1
+fi
+
+# Create the search template in Elasticsearch
+echo "Creating search template in Elasticsearch..."
+
+python3 << 'EOF'
+import json
+import logging
+import os
+from elasticsearch import Elasticsearch
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Read API key and Elasticsearch URL from project results JSON file
+def get_elasticsearch_config():
+    """Read API key and Elasticsearch URL from project results JSON file"""
+    try:
+        with open("/tmp/project_results.json", "r") as f:
+            project_data = json.load(f)
+        
+        # Get the first region's data
+        first_region = list(project_data.keys())[0]
+        region_data = project_data[first_region]
+        
+        # Get API key from credentials
+        api_key = region_data["credentials"]["api_key"]
+        
+        # Get Elasticsearch URL from endpoints
+        elasticsearch_url = region_data["endpoints"]["elasticsearch"]
+        
+        logger.info("API key and Elasticsearch URL loaded successfully from project results")
+        return api_key, elasticsearch_url
+    except Exception as e:
+        logger.error(f"Failed to read configuration from /tmp/project_results.json: {e}")
+        raise
+
+# Get API key and Elasticsearch URL
+API_KEY, ELASTICSEARCH_URL = get_elasticsearch_config()
+
+# Initialize Elasticsearch client
+es = Elasticsearch(
+    [ELASTICSEARCH_URL],
+    api_key=API_KEY,
+    request_timeout=60,
+    verify_certs=False
+)
+
+def create_search_template():
+    """Create the properties search template in Elasticsearch"""
+    template_name = "properties-search-template"
+    
+    try:
+        # Read the search template content
+        with open("/tmp/search-template.mustache", "r") as f:
+            template_content = f.read().strip()
+        
+        logger.info(f"Read search template content: {len(template_content)} characters")
+        
+        # Parse the template content as JSON to validate it
+        try:
+            template_json = json.loads(template_content)
+            logger.info("Search template JSON is valid")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in search template: {e}")
+            raise
+        
+        # Create the search template
+        template_body = {
+            "script": {
+                "lang": "mustache",
+                "source": template_content
+            }
+        }
+        
+        # Put the search template
+        response = es.put_script(
+            id=template_name,
+            body=template_body
+        )
+        
+        logger.info(f"Successfully created search template: {template_name}")
+        logger.info(f"Template response: {json.dumps(response, indent=2)}")
+        
+        # Verify the template was created
+        get_response = es.get_script(id=template_name)
+        logger.info(f"Verified template exists: {template_name}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to create search template {template_name}: {e}")
+        raise
+
+def main():
+    """Main function to create search template"""
+    logger.info("Starting search template creation...")
+    
+    try:
+        # Create the search template
+        create_search_template()
+        
+        logger.info("Search template creation completed successfully!")
+        print(json.dumps({"success": True, "message": "Search template created successfully"}))
+        
+    except Exception as e:
+        logger.error(f"Error during search template creation: {str(e)}")
+        print(json.dumps({"success": False, "error": str(e)}))
+
+if __name__ == "__main__":
+    main()
+EOF
+
+if [ $? -eq 0 ]; then
+    echo "Search template created successfully!"
+else
+    echo "Warning: Search template creation failed"
+fi
+
+echo "Setup complete! Inference models have been woken up, properties data has been ingested, specialized indices have been created, and search template has been created successfully."
