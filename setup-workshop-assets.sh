@@ -1221,13 +1221,12 @@ def create_search_template():
         
         logger.info(f"Read search template content: {len(template_content)} characters")
         
-        # Parse the template content as JSON to validate it
-        try:
-            template_json = json.loads(template_content)
-            logger.info("Search template JSON is valid")
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in search template: {e}")
-            raise
+        # Validate that the template content is not empty
+        if not template_content.strip():
+            logger.error("Search template content is empty")
+            raise ValueError("Search template content is empty")
+        
+        logger.info("Search template content loaded successfully")
         
         # Create the search template
         template_body = {
@@ -1244,7 +1243,7 @@ def create_search_template():
         )
         
         logger.info(f"Successfully created search template: {template_name}")
-        logger.info(f"Template response: {json.dumps(response, indent=2)}")
+        logger.info(f"Template creation response status: {response.meta.status}")
         
         # Verify the template was created
         get_response = es.get_script(id=template_name)
