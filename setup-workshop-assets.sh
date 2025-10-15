@@ -454,6 +454,7 @@ python3 << 'EOF'
 import json
 import logging
 import os
+import time
 from elasticsearch import Elasticsearch
 
 # Configure logging
@@ -686,7 +687,7 @@ def create_properties_index():
 
 # Ingest the properties data
 def ingest_properties_data():
-    """Ingest the properties data into the index"""
+    """Ingest the properties data into the index using individual indexing with retry logic"""
     index_name = "properties"
     
     try:
@@ -716,25 +717,92 @@ def ingest_properties_data():
         if not properties_data:
             raise ValueError("No valid property data found in the file")
         
-        # Prepare bulk request
-        bulk_data = ""
-        for i, property_doc in enumerate(properties_data):
-            # Add document ID based on index
-            bulk_data += json.dumps({"index": {"_index": index_name, "_id": str(i)}}) + "\n"
-            bulk_data += json.dumps(property_doc) + "\n"
+        # Index documents in small batches to avoid ELSER connection issues
+        successful_count = 0
+        failed_count = 0
+        batch_size = 10
+        max_retries = 3
+        retry_delay = 2
         
-        # Send bulk request
-        response = es.bulk(body=bulk_data)
+        logger.info(f"Starting batch indexing of {len(properties_data)} documents in batches of {batch_size}...")
         
-        if response.get("errors"):
-            logger.error("Some documents failed to index:")
-            for item in response["items"]:
-                if "index" in item and "error" in item["index"]:
-                    logger.error(f"Error indexing document {item['index']['_id']}: {item['index']['error']}")
-        else:
-            logger.info(f"Successfully ingested {len(properties_data)} properties into {index_name} index")
+        # Process documents in batches
+        for batch_start in range(0, len(properties_data), batch_size):
+            batch_end = min(batch_start + batch_size, len(properties_data))
+            batch_docs = properties_data[batch_start:batch_end]
+            
+            logger.info(f"Processing batch {batch_start//batch_size + 1}: documents {batch_start + 1}-{batch_end}")
+            
+            # Retry logic for each batch
+            for attempt in range(max_retries):
+                try:
+                    # Prepare bulk request for this batch
+                    bulk_data = ""
+                    for i, property_doc in enumerate(batch_docs):
+                        doc_id = str(batch_start + i)
+                        bulk_data += json.dumps({"index": {"_index": index_name, "_id": doc_id}}) + "\n"
+                        bulk_data += json.dumps(property_doc) + "\n"
+                    
+                    # Send bulk request for this batch
+                    response = es.bulk(body=bulk_data, timeout="60s")
+                    
+                    # Count successful and failed documents in this batch
+                    batch_successful = 0
+                    batch_failed = 0
+                    
+                    if response.get("errors"):
+                        for item in response["items"]:
+                            if "index" in item:
+                                if "error" in item["index"]:
+                                    batch_failed += 1
+                                    error_msg = str(item["index"]["error"])
+                                    
+                                    # Check if it's an ELSER connection error
+                                    if ("inference_exception" in error_msg and "Connection is closed" in error_msg) or \
+                                       ("503" in error_msg or "500" in error_msg):
+                                        logger.warning(f"Document {item['index']['_id']} failed with ELSER error: {error_msg}")
+                                    else:
+                                        logger.error(f"Document {item['index']['_id']} failed with non-ELSER error: {error_msg}")
+                                else:
+                                    batch_successful += 1
+                    else:
+                        batch_successful = len(batch_docs)
+                    
+                    successful_count += batch_successful
+                    failed_count += batch_failed
+                    
+                    logger.info(f"Batch completed: {batch_successful} successful, {batch_failed} failed")
+                    break  # Success, move to next batch
+                    
+                except Exception as e:
+                    error_msg = str(e)
+                    
+                    # Check if it's an ELSER connection error
+                    if ("inference_exception" in error_msg and "Connection is closed" in error_msg) or \
+                       ("503" in error_msg or "500" in error_msg):
+                        
+                        if attempt < max_retries - 1:
+                            logger.warning(f"Batch {batch_start//batch_size + 1} attempt {attempt + 1} failed with ELSER error, retrying in {retry_delay}s: {error_msg}")
+                            time.sleep(retry_delay)
+                        else:
+                            logger.error(f"Batch {batch_start//batch_size + 1} failed after {max_retries} attempts: {error_msg}")
+                            failed_count += len(batch_docs)
+                    else:
+                        # Non-ELSER error, don't retry
+                        logger.error(f"Batch {batch_start//batch_size + 1} failed with non-ELSER error: {error_msg}")
+                        failed_count += len(batch_docs)
+                        break
+            
+            # Small delay between batches to be gentle on the ELSER service
+            if batch_end < len(properties_data):
+                time.sleep(0.5)
         
-        return response
+        logger.info(f"Indexing completed: {successful_count} successful, {failed_count} failed")
+        
+        if failed_count > 0:
+            logger.warning(f"{failed_count} documents failed to index, but continuing...")
+        
+        return {"successful": successful_count, "failed": failed_count}
         
     except Exception as e:
         logger.error(f"Failed to ingest properties data: {e}")
