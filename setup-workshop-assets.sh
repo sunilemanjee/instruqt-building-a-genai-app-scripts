@@ -720,7 +720,7 @@ def ingest_properties_data():
         # Index documents in small batches to avoid ELSER connection issues
         successful_count = 0
         failed_count = 0
-        batch_size = 10
+        batch_size = 100
         max_retries = 3
         retry_delay = 2
         
